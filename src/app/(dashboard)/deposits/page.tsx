@@ -172,23 +172,23 @@ export default function DepositsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-50/50">
-                      <TableHead className="w-12">
+                      <TableHead className="w-12 pl-6">
                         <Checkbox 
                           checked={selectedIds.size === pendingSales.length && pendingSales.length > 0}
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
-                      <TableHead className="font-semibold text-gray-700 w-[80px]">날짜</TableHead>
+                      <TableHead className="font-semibold text-gray-700 w-[100px]">날짜</TableHead>
                       <TableHead className="font-semibold text-gray-700">상품</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-right">금액</TableHead>
-                      <TableHead className="font-semibold text-gray-700 hidden lg:table-cell">카드사</TableHead>
-                      <TableHead className="font-semibold text-gray-700 hidden lg:table-cell">입금예정</TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-right w-[120px]">금액</TableHead>
+                      <TableHead className="font-semibold text-gray-700 hidden lg:table-cell w-[100px]">카드사</TableHead>
+                      <TableHead className="font-semibold text-gray-700 hidden lg:table-cell w-[100px] pr-6">입금예정</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {pendingSales.map((sale) => (
                       <TableRow key={sale.id} className="hover:bg-gray-50/50">
-                        <TableCell>
+                        <TableCell className="pl-6">
                           <Checkbox 
                             checked={selectedIds.has(sale.id)}
                             onCheckedChange={(checked) => {
@@ -203,7 +203,7 @@ export default function DepositsPage() {
                         <TableCell className="font-medium text-gray-900">{sale.product_name}</TableCell>
                         <TableCell className="text-right font-semibold text-gray-900">{formatCurrency(sale.expected_deposit || sale.amount)}</TableCell>
                         <TableCell className="hidden lg:table-cell text-gray-600">{sale.card_company || '-'}</TableCell>
-                        <TableCell className="hidden lg:table-cell text-gray-600">
+                        <TableCell className="hidden lg:table-cell text-gray-600 pr-6">
                           {sale.expected_deposit_date ? format(new Date(sale.expected_deposit_date), 'M/d') : '-'}
                         </TableCell>
                       </TableRow>
@@ -290,11 +290,11 @@ export default function DepositsPage() {
                 <TableBody>
                   {completedSales.map((sale) => (
                     <TableRow key={sale.id} className="bg-green-50/30">
-                      <TableCell className="text-gray-600 w-[80px]">{format(new Date(sale.date), 'M/d')}</TableCell>
+                      <TableCell className="text-gray-600 w-[100px] pl-6">{format(new Date(sale.date), 'M/d')}</TableCell>
                       <TableCell className="font-medium text-gray-900">{sale.product_name}</TableCell>
-                      <TableCell className="text-right font-semibold text-gray-900">{formatCurrency(sale.expected_deposit || sale.amount)}</TableCell>
-                      <TableCell className="text-gray-500 hidden lg:table-cell">{sale.card_company || '-'}</TableCell>
-                      <TableCell className="text-green-600 hidden lg:table-cell">
+                      <TableCell className="text-right font-semibold text-gray-900 w-[120px]">{formatCurrency(sale.expected_deposit || sale.amount)}</TableCell>
+                      <TableCell className="text-gray-500 hidden lg:table-cell w-[100px]">{sale.card_company || '-'}</TableCell>
+                      <TableCell className="text-green-600 hidden lg:table-cell w-[100px] pr-6">
                         {sale.deposited_at ? format(new Date(sale.deposited_at), 'M/d 입금') : '입금완료'}
                       </TableCell>
                     </TableRow>
