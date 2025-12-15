@@ -12,6 +12,7 @@ import {
   Settings,
   X,
   Flower2,
+  Image,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ const navItems = [
   { href: '/expenses', icon: Wallet, label: '지출관리' },
   { href: '/customers', icon: Users, label: '고객관리' },
   { href: '/deposits', icon: CreditCard, label: '입금대조' },
+  { href: '/gallery', icon: Image, label: '사진첩' },
   { href: '/statistics', icon: BarChart3, label: '통계' },
 ];
 

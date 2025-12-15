@@ -99,3 +99,59 @@ export interface CardCompanySetting {
   deposit_days: number;
   is_active: boolean;
 }
+
+// Sale Settings Types
+export interface SaleCategory {
+  id: string;
+  value: string;
+  label: string;
+  color: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface SalePaymentMethod {
+  id: string;
+  value: string;
+  label: string;
+  color: string;
+  sort_order: number;
+  created_at: string;
+}
+
+
+// Photo Gallery Types
+export interface PhotoTag {
+  id: string;
+  name: string;
+  color: string;
+  created_at: string;
+}
+
+export interface PhotoFile {
+  url: string;
+  originalName: string;
+}
+
+export interface PhotoCard {
+  id: string;
+  title: string;
+  description: string | null;
+  tags: string[];
+  photos: PhotoFile[];
+  sale_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const PHOTO_TAG_COLORS = [
+  { value: '#f5f5f5', label: '화이트' },
+  { value: '#ec4899', label: '핑크' },
+  { value: '#ef4444', label: '레드' },
+  { value: '#eab308', label: '옐로우' },
+  { value: '#a855f7', label: '퍼플' },
+  { value: '#6366f1', label: '인디고' },
+  { value: '#14b8a6', label: '틸' },
+  { value: '#f97316', label: '오렌지' },
+  { value: '#6b7280', label: '그레이' },
+] as const;

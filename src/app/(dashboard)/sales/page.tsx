@@ -1,4 +1,6 @@
 import { getSales } from '@/lib/actions/sales';
+import { getSaleCategories, getPaymentMethods } from '@/lib/actions/sale-settings';
+import { getCardCompanySettings } from '@/lib/actions/settings';
 import { SalesClient } from './sales-client';
 
 export default async function SalesPage({
@@ -14,13 +16,22 @@ export default async function SalesPage({
   
   // Format for getSales: "YYYY-MM"
   const monthParam = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-  const sales = await getSales(monthParam);
+  
+  const [sales, categories, payments, cardCompanies] = await Promise.all([
+    getSales(monthParam),
+    getSaleCategories(),
+    getPaymentMethods(),
+    getCardCompanySettings(),
+  ]);
   
   return (
     <SalesClient 
       initialSales={sales} 
       currentYear={currentYear}
       currentMonth={currentMonth}
+      initialCategories={categories}
+      initialPayments={payments}
+      initialCardCompanies={cardCompanies}
     />
   );
 }

@@ -68,12 +68,26 @@ CREATE TABLE card_company_settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 상품 카테고리 테이블
-CREATE TABLE product_categories (
+-- 상품 카테고리 테이블 (매출용)
+-- value: DB에 저장되는 값 (영문), label: UI에 표시되는 값 (한글)
+CREATE TABLE sale_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(100) NOT NULL UNIQUE,
+  value VARCHAR(100) NOT NULL UNIQUE,
+  label VARCHAR(100) NOT NULL,
+  color VARCHAR(7) DEFAULT '#f43f5e',
   sort_order INTEGER DEFAULT 0,
-  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 결제방식 테이블
+-- value: DB에 저장되는 값 (영문, sales 테이블 CHECK 제약조건과 일치해야 함)
+-- label: UI에 표시되는 값 (한글)
+CREATE TABLE payment_methods (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  value VARCHAR(20) NOT NULL UNIQUE,
+  label VARCHAR(100) NOT NULL,
+  color VARCHAR(7) DEFAULT '#3b82f6',
+  sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -88,13 +102,26 @@ INSERT INTO card_company_settings (name, fee_rate, deposit_days) VALUES
   ('우리카드', 2.0, 3),
   ('BC카드', 2.0, 3);
 
--- 기본 상품 카테고리 데이터
-INSERT INTO product_categories (name, sort_order) VALUES
-  ('꽃다발', 1),
-  ('꽃바구니', 2),
-  ('화병', 3),
-  ('화환', 4),
-  ('기타', 5);
+-- 기본 매출 카테고리 데이터
+INSERT INTO sale_categories (value, label, color, sort_order) VALUES
+  ('mini_bouquet', '미니 꽃다발', '#f43f5e', 1),
+  ('basic_bouquet', '기본 꽃다발', '#f43f5e', 2),
+  ('medium_bouquet', '중형 꽃다발', '#f43f5e', 3),
+  ('large_bouquet', '대형 꽃다발', '#f43f5e', 4),
+  ('special_bouquet', '스페셜 꽃다발', '#f43f5e', 5),
+  ('proposal_bouquet', '프로포즈 꽃다발', '#f43f5e', 6),
+  ('basket', '꽃바구니', '#fb923c', 7),
+  ('vase', '화병꽂이', '#06b6d4', 8),
+  ('group_bouquet', '단체꽃다발', '#6366f1', 9),
+  ('reservation', '예약', '#f97316', 10),
+  ('photo_bouquet', '촬영부케', '#ec4899', 11);
+
+-- 기본 결제방식 데이터 (value는 sales 테이블 CHECK 제약조건과 일치)
+INSERT INTO payment_methods (value, label, color, sort_order) VALUES
+  ('card', '카드', '#3b82f6', 1),
+  ('naverpay', '네이버페이', '#10b981', 2),
+  ('transfer', '계좌이체', '#8b5cf6', 3),
+  ('cash', '현금', '#22c55e', 4);
 
 -- 인덱스
 CREATE INDEX idx_sales_date ON sales(date);
@@ -138,3 +165,78 @@ CREATE TRIGGER update_card_settings_updated_at BEFORE UPDATE ON card_company_set
 
 -- 삭제 정책 (인증된 사용자만)
 -- CREATE POLICY "Allow authenticated deletes" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'sale-photos');
+
+
+-- =============================================
+-- 사진첩 (Photo Gallery) 테이블
+-- =============================================
+
+-- 사진 태그 테이블
+CREATE TABLE photo_tags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(50) NOT NULL UNIQUE,
+  color VARCHAR(7) DEFAULT '#6b7280',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 사진 카드 테이블
+-- photos: [{url: string, originalName: string}, ...]
+CREATE TABLE photo_cards (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  tags TEXT[] DEFAULT '{}',
+  photos JSONB DEFAULT '[]',
+  sale_id UUID REFERENCES sales(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 사진 카드 인덱스
+CREATE INDEX idx_photo_cards_tags ON photo_cards USING GIN(tags);
+CREATE INDEX idx_photo_cards_sale_id ON photo_cards(sale_id);
+CREATE INDEX idx_photo_cards_created_at ON photo_cards(created_at DESC);
+
+-- 사진 카드 updated_at 트리거
+CREATE TRIGGER update_photo_cards_updated_at BEFORE UPDATE ON photo_cards FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- 기본 사진 태그 데이터
+INSERT INTO photo_tags (name, color) VALUES
+  ('화이트', '#f5f5f5'),
+  ('핑크', '#ec4899'),
+  ('레드', '#ef4444'),
+  ('옐로우', '#eab308'),
+  ('퍼플', '#a855f7'),
+  ('믹스', '#6366f1'),
+  ('웨딩', '#f472b6'),
+  ('프로포즈', '#f43f5e'),
+  ('생일', '#f97316'),
+  ('기념일', '#14b8a6');
+
+-- Storage 버킷 설정 (photo-cards)
+-- Supabase Dashboard에서 실행:
+-- 1. Storage 메뉴에서 "New bucket" 클릭
+-- 2. 버킷 이름: photo-cards
+-- 3. Public bucket: 체크 (이미지 공개 접근 허용)
+-- 4. File size limit: 10MB
+-- 5. Allowed MIME types: 비워두기 (모든 타입 허용)
+
+-- Storage RLS 정책 (photo-cards 버킷) - SQL Editor에서 실행
+-- INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types) 
+--   VALUES ('photo-cards', 'photo-cards', true, 10485760, NULL);
+
+-- 모든 사용자 업로드 허용 (public bucket)
+-- CREATE POLICY "Allow public uploads photo-cards" ON storage.objects 
+--   FOR INSERT WITH CHECK (bucket_id = 'photo-cards');
+
+-- 모든 사용자 읽기 허용
+-- CREATE POLICY "Allow public read photo-cards" ON storage.objects 
+--   FOR SELECT USING (bucket_id = 'photo-cards');
+
+-- 모든 사용자 업데이트 허용
+-- CREATE POLICY "Allow public update photo-cards" ON storage.objects 
+--   FOR UPDATE USING (bucket_id = 'photo-cards');
+
+-- 모든 사용자 삭제 허용
+-- CREATE POLICY "Allow public delete photo-cards" ON storage.objects 
+--   FOR DELETE USING (bucket_id = 'photo-cards');

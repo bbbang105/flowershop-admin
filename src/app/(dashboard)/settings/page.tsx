@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Plus, X, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const defaultCardSettings = [
@@ -16,30 +15,14 @@ const defaultCardSettings = [
   { id: '5', name: '롯데카드', fee_rate: 2.0, deposit_days: 3 },
 ];
 
-const defaultCategories = ['꽃다발', '꽃바구니', '화병', '화환', '기타'];
-
 export default function SettingsPage() {
   const [cardSettings, setCardSettings] = useState(defaultCardSettings);
-  const [categories, setCategories] = useState(defaultCategories);
-  const [newCategory, setNewCategory] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-
-  const handleAddCategory = () => {
-    if (newCategory.trim() && !categories.includes(newCategory.trim())) {
-      setCategories([...categories, newCategory.trim()]);
-      setNewCategory('');
-    }
-  };
-
-  const handleRemoveCategory = (cat: string) => {
-    setCategories(categories.filter((c) => c !== cat));
-  };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // TODO: 실제 저장 로직 구현 (Supabase 연동)
-      await new Promise(resolve => setTimeout(resolve, 500)); // 시뮬레이션
+      await new Promise(resolve => setTimeout(resolve, 500));
       toast.success('설정이 저장되었습니다');
     } catch (error) {
       toast.error('설정 저장에 실패했습니다');
@@ -52,7 +35,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">설정</h1>
-        <p className="text-gray-500 mt-1">카드 수수료율과 카테고리를 관리하세요</p>
+        <p className="text-gray-500 mt-1">카드 수수료율을 관리하세요</p>
       </div>
       
       <Card className="border-0 shadow-sm">
@@ -93,38 +76,11 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
-      
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-900">상품 카테고리 관리</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {categories.map((cat) => (
-                <Badge key={cat} variant="secondary" className="text-sm py-1.5 px-3 bg-gray-100 text-gray-700 hover:bg-gray-200">
-                  {cat}
-                  <button onClick={() => handleRemoveCategory(cat)} className="ml-2 hover:text-red-500">
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="새 카테고리 이름"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
-                className="max-w-xs bg-white border-gray-200"
-              />
-              <Button onClick={handleAddCategory} size="icon" className="bg-rose-500 hover:bg-rose-600">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
+      <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-600">
+        <p>💡 매출 카테고리와 결제방식은 매출 관리 페이지의 설정 버튼에서 관리할 수 있습니다.</p>
+        <p className="mt-1">💡 사진첩 태그는 사진첩 페이지의 태그 관리에서 관리할 수 있습니다.</p>
+      </div>
       
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={isSaving} className="bg-rose-500 hover:bg-rose-600">
