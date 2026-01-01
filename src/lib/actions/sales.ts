@@ -11,7 +11,10 @@ export async function getSales(month?: string) {
   
   let query = supabase
     .from('sales')
-    .select('*')
+    .select(`
+      *,
+      customer:customers(id, name, phone)
+    `)
     .order('date', { ascending: false });
   
   if (month) {
@@ -23,17 +26,77 @@ export async function getSales(month?: string) {
   
   const { data, error } = await query;
   if (error) throw error;
-  return data as Sale[];
+  
+  // 고객 정보를 매출 데이터에 병합
+  const salesWithCustomer = (data || []).map(sale => ({
+    ...sale,
+    customer_name: sale.customer?.name || sale.customer_name,
+    customer_phone: sale.customer?.phone || sale.customer_phone,
+  }));
+  
+  return salesWithCustomer as Sale[];
 }
 
 export async function createSale(formData: FormData) {
   const supabase = await createClient();
   
   const productCategory = formData.get('product_category') as string;
+  const customerName = formData.get('customer_name') as string || null;
+  const customerPhone = formData.get('customer_phone') as string || null;
+  const customerId = formData.get('customer_id') as string || null;
+  
+  // 고객 ID 처리: 기존 고객 선택 또는 새 고객 자동 생성
+  let finalCustomerId = customerId || null;
+  
+  if (!finalCustomerId && customerName && customerName.trim()) {
+    // 전화번호가 있으면 먼저 기존 고객 찾기
+    if (customerPhone && customerPhone.trim()) {
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('phone', customerPhone.trim())
+        .single();
+      
+      if (existingCustomer) {
+        finalCustomerId = existingCustomer.id;
+      }
+    }
+    
+    // 기존 고객 없으면 새로 생성
+    if (!finalCustomerId) {
+      const tempPhone = customerPhone?.trim() || `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      const { data: newCustomer, error: customerError } = await supabase
+        .from('customers')
+        .insert({
+          name: customerName.trim(),
+          phone: tempPhone,
+          grade: 'new',
+          total_purchase_count: 0,
+          total_purchase_amount: 0
+        })
+        .select('id')
+        .single();
+      
+      if (!customerError && newCustomer) {
+        finalCustomerId = newCustomer.id;
+      } else if (customerError?.code === '23505' && customerPhone) {
+        // 전화번호 중복이면 기존 고객 찾기
+        const { data: existingCustomer } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('phone', customerPhone.trim())
+          .single();
+        
+        if (existingCustomer) {
+          finalCustomerId = existingCustomer.id;
+        }
+      }
+    }
+  }
   
   const sale = {
     date: formData.get('date') as string,
-    product_name: productCategory, // Use category as product_name for backward compatibility
+    product_name: productCategory,
     product_category: productCategory,
     amount: parseInt(formData.get('amount') as string),
     payment_method: formData.get('payment_method') as string,
@@ -43,8 +106,9 @@ export async function createSale(formData: FormData) {
     expected_deposit_date: formData.get('expected_deposit_date') as string || null,
     deposit_status: formData.get('deposit_status') as string || 'not_applicable',
     reservation_channel: formData.get('reservation_channel') as string || 'other',
-    customer_name: formData.get('customer_name') as string || null,
-    customer_phone: formData.get('customer_phone') as string || null,
+    customer_name: customerName,
+    customer_phone: customerPhone,
+    customer_id: finalCustomerId,
     note: formData.get('note') as string || null,
   };
   
@@ -52,6 +116,7 @@ export async function createSale(formData: FormData) {
   if (error) throw error;
   
   revalidatePath('/sales');
+  revalidatePath('/customers');
   revalidatePath('/');
   return data;
 }
@@ -59,10 +124,63 @@ export async function createSale(formData: FormData) {
 export async function updateSale(id: string, formData: FormData) {
   const supabase = await createClient();
   
+  const customerName = formData.get('customer_name') as string || null;
+  const customerPhone = formData.get('customer_phone') as string || null;
+  const customerId = formData.get('customer_id') as string || null;
+  
+  // 고객 ID 처리: 기존 고객 선택 또는 새 고객 자동 생성
+  let finalCustomerId = customerId || null;
+  
+  if (!finalCustomerId && customerName && customerName.trim()) {
+    // 전화번호가 있으면 먼저 기존 고객 찾기
+    if (customerPhone && customerPhone.trim()) {
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('phone', customerPhone.trim())
+        .single();
+      
+      if (existingCustomer) {
+        finalCustomerId = existingCustomer.id;
+      }
+    }
+    
+    // 기존 고객 없으면 새로 생성
+    if (!finalCustomerId) {
+      const tempPhone = customerPhone?.trim() || `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      const { data: newCustomer, error: customerError } = await supabase
+        .from('customers')
+        .insert({
+          name: customerName.trim(),
+          phone: tempPhone,
+          grade: 'new',
+          total_purchase_count: 0,
+          total_purchase_amount: 0
+        })
+        .select('id')
+        .single();
+      
+      if (!customerError && newCustomer) {
+        finalCustomerId = newCustomer.id;
+      } else if (customerError?.code === '23505' && customerPhone) {
+        // 전화번호 중복이면 기존 고객 찾기
+        const { data: existingCustomer } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('phone', customerPhone.trim())
+          .single();
+        
+        if (existingCustomer) {
+          finalCustomerId = existingCustomer.id;
+        }
+      }
+    }
+  }
+  
   const updates: Record<string, string | number | boolean | null> = {};
   const fields = ['date', 'product_name', 'product_category', 'amount', 'payment_method', 
     'card_company', 'fee', 'expected_deposit', 'expected_deposit_date', 'deposit_status',
-    'reservation_channel', 'customer_name', 'customer_phone', 'note', 'has_review'];
+    'reservation_channel', 'note', 'has_review'];
   
   fields.forEach(field => {
     const value = formData.get(field);
@@ -77,10 +195,16 @@ export async function updateSale(id: string, formData: FormData) {
     }
   });
   
+  // 고객 정보 추가
+  updates.customer_name = customerName;
+  updates.customer_phone = customerPhone;
+  updates.customer_id = finalCustomerId;
+  
   const { error } = await supabase.from('sales').update(updates).eq('id', id);
   if (error) throw error;
   
   revalidatePath('/sales');
+  revalidatePath('/customers');
   revalidatePath('/');
 }
 
@@ -90,6 +214,7 @@ export async function deleteSale(id: string) {
   if (error) throw error;
   
   revalidatePath('/sales');
+  revalidatePath('/customers');
   revalidatePath('/');
 }
 
@@ -191,10 +316,19 @@ export async function getSaleById(id: string): Promise<Sale | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('sales')
-    .select('*')
+    .select(`
+      *,
+      customer:customers(id, name, phone)
+    `)
     .eq('id', id)
     .single();
   
   if (error) return null;
-  return data as Sale;
+  
+  // 고객 정보 병합
+  return {
+    ...data,
+    customer_name: data.customer?.name || data.customer_name,
+    customer_phone: data.customer?.phone || data.customer_phone,
+  } as Sale;
 }

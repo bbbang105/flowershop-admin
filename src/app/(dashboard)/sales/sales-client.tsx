@@ -18,8 +18,9 @@ import { createSale, updateSale, deleteSale } from '@/lib/actions/sales';
 import { getPhotoCardBySaleId } from '@/lib/actions/photo-cards';
 import { SalePhotoModal } from '@/components/sales/SalePhotoModal';
 import { SalesSettingsModal } from '@/components/sales/SalesSettingsModal';
+import { CustomerAutocomplete } from '@/components/sales/CustomerAutocomplete';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
+import { cn, formatPhoneNumber } from '@/lib/utils';
 import type { PhotoCard, Sale, CardCompanySetting } from '@/types/database';
 import { calculateSalesSummary } from '@/lib/utils';
 import { SaleCategory, PaymentMethod, getSaleCategories, getPaymentMethods } from '@/lib/actions/sale-settings';
@@ -45,12 +46,13 @@ interface Props {
   initialCategories: SaleCategory[];
   initialPayments: PaymentMethod[];
   initialCardCompanies: CardCompanySetting[];
+  initialSelectedSale?: Sale | null;
 }
 
-export function SalesClient({ initialSales, currentYear, currentMonth, initialCategories, initialPayments, initialCardCompanies }: Props) {
+export function SalesClient({ initialSales, currentYear, currentMonth, initialCategories, initialPayments, initialCardCompanies, initialSelectedSale }: Props) {
   const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(initialSelectedSale || null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -67,6 +69,15 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
   const [cardCompanies, setCardCompanies] = useState<CardCompanySetting[]>(initialCardCompanies);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(initialPayments[0]?.value || 'card');
   const [editPaymentMethod, setEditPaymentMethod] = useState<string>('');
+  
+  // 고객 자동완성 상태
+  const [customerName, setCustomerName] = useState('');
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [customerPhone, setCustomerPhone] = useState<string | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerId, setEditCustomerId] = useState<string | null>(null);
+  const [editCustomerPhone, setEditCustomerPhone] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Sale | null>(null);
 
   // 카테고리/결제방식 라벨 및 색상 맵 생성 (value -> label/color)
   const categoryLabels = useMemo(() => 
@@ -183,13 +194,22 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
     setEditingSale(sale);
     setEditNoteValue(sale.note || '');
     setEditPaymentMethod(sale.payment_method);
+    setEditCustomerName(sale.customer_name || '');
+    setEditCustomerId(sale.customer_id || null);
+    setEditCustomerPhone(sale.customer_phone || null);
     setSelectedSale(null);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('정말 삭제하시겠습니까?')) return;
+  const handleDelete = (sale: Sale) => {
+    setDeleteTarget(sale);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteSale(id);
+      await deleteSale(deleteTarget.id);
+      setDeleteTarget(null);
+      setSelectedSale(null);
       router.refresh();
       toast.success('매출이 삭제되었습니다');
     } catch (error) {
@@ -206,7 +226,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
           <h1 className="text-2xl font-bold text-gray-900">매출 관리</h1>
           <p className="text-gray-500 mt-1">매출 내역을 등록하고 관리하세요</p>
         </div>
-        <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setSelectedPaymentMethod(payments[0]?.value || 'card'); }} className="bg-rose-500 hover:bg-rose-600">
+        <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setSelectedPaymentMethod(payments[0]?.value || 'card'); setCustomerName(''); setCustomerId(null); setCustomerPhone(null); }} className="bg-rose-500 hover:bg-rose-600">
           <Plus className="w-4 h-4 mr-2" />
           매출 등록
         </Button>
@@ -487,7 +507,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                           className="h-8 w-8 text-gray-400 hover:text-red-500"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(sale.id);
+                            handleDelete(sale);
                           }}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -569,7 +589,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
           <DialogHeader>
             <DialogTitle className="text-xl">매출 등록</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-5 pt-2">
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e); }} className="space-y-5 pt-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>날짜 *</Label>
@@ -659,11 +679,25 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>주문자명</Label>
-                <Input name="customer_name" placeholder="홍길동" className="bg-gray-50" />
+                <CustomerAutocomplete
+                  value={customerName}
+                  onChange={(name, id, phone) => {
+                    setCustomerName(name);
+                    setCustomerId(id);
+                    setCustomerPhone(phone);
+                  }}
+                  placeholder="고객명 검색 또는 입력"
+                />
               </div>
               <div className="space-y-2">
                 <Label>연락처</Label>
-                <Input name="customer_phone" placeholder="010-0000-0000" className="bg-gray-50" />
+                <Input 
+                  name="customer_phone" 
+                  value={customerPhone || ''} 
+                  onChange={(e) => setCustomerPhone(formatPhoneNumber(e.target.value))}
+                  placeholder="010-0000-0000" 
+                  className="bg-gray-50" 
+                />
               </div>
             </div>
             <div className="space-y-2">
@@ -803,8 +837,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                     variant="outline" 
                     className="text-red-500 hover:text-red-600 hover:bg-red-50"
                     onClick={() => {
-                      handleDelete(selectedSale.id);
-                      setSelectedSale(null);
+                      handleDelete(selectedSale);
                     }}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
@@ -827,7 +860,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
             <DialogTitle className="text-xl">매출 수정</DialogTitle>
           </DialogHeader>
           {editingSale && (
-            <form onSubmit={handleUpdate} className="space-y-5 pt-2">
+            <form onSubmit={(e) => { e.preventDefault(); handleUpdate(e); }} className="space-y-5 pt-2">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>날짜 *</Label>
@@ -917,11 +950,25 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>주문자명</Label>
-                  <Input name="customer_name" defaultValue={editingSale.customer_name || ''} placeholder="홍길동" className="bg-gray-50" />
+                  <CustomerAutocomplete
+                    value={editCustomerName}
+                    onChange={(name, id, phone) => {
+                      setEditCustomerName(name);
+                      setEditCustomerId(id);
+                      setEditCustomerPhone(phone);
+                    }}
+                    placeholder="고객명 검색 또는 입력"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>연락처</Label>
-                  <Input name="customer_phone" defaultValue={editingSale.customer_phone || ''} placeholder="010-0000-0000" className="bg-gray-50" />
+                  <Input 
+                    name="customer_phone" 
+                    value={editCustomerPhone || ''} 
+                    onChange={(e) => setEditCustomerPhone(formatPhoneNumber(e.target.value))}
+                    placeholder="010-0000-0000" 
+                    className="bg-gray-50" 
+                  />
                 </div>
               </div>
               <div className="space-y-2">
@@ -990,6 +1037,36 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
           onSuccess={() => router.refresh()}
         />
       )}
+
+      {/* Delete Confirm Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>매출 삭제</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-600 text-sm">
+              이 매출 기록을 삭제하시겠습니까?
+            </p>
+            {deleteTarget && (
+              <p className="text-gray-500 text-xs mt-2">
+                {format(new Date(deleteTarget.date), 'M월 d일', { locale: ko })} · {formatCurrency(deleteTarget.amount)}
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              취소
+            </Button>
+            <Button 
+              className="bg-red-500 hover:bg-red-600"
+              onClick={confirmDelete}
+            >
+              삭제
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Sales Settings Modal */}
       <SalesSettingsModal
