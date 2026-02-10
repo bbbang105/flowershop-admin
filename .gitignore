@@ -46,3 +46,10 @@ next-env.d.ts
 
 # mcp (contains access tokens)
 .mcp.json
+
+### Claude ###
+.serena
+/docs
+
+### IDE ####
+.idea
