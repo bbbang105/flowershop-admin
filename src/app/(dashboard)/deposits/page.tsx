@@ -214,9 +214,10 @@ export default function DepositsPage() {
     <button
       onClick={() => toggleSort(field)}
       className="flex items-center gap-1 hover:text-foreground transition-colors"
+      aria-label={`${children} 정렬`}
     >
       {children}
-      <ArrowUpDown className={`h-3 w-3 ${sortField === field ? 'text-foreground' : 'text-muted-foreground/50'}`} />
+      <ArrowUpDown className={`h-3 w-3 ${sortField === field ? 'text-foreground' : 'text-muted-foreground/50'}`} aria-hidden="true" />
     </button>
   );
 
@@ -333,7 +334,7 @@ export default function DepositsPage() {
             <div className="flex items-center gap-2">
               <Filter className="h-3.5 w-3.5 text-muted-foreground" />
               <Select value={cardFilter} onValueChange={setCardFilter}>
-                <SelectTrigger className="w-[130px] h-8 text-xs bg-background">
+                <SelectTrigger className="w-[130px] h-8 text-xs bg-background" aria-label="카드사 필터">
                   <SelectValue placeholder="카드사" />
                 </SelectTrigger>
                 <SelectContent>
@@ -346,8 +347,8 @@ export default function DepositsPage() {
                 </SelectContent>
               </Select>
               {cardFilter !== 'all' && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCardFilter('all')}>
-                  <X className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCardFilter('all')} aria-label="필터 초기화">
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
                 </Button>
               )}
             </div>
@@ -415,6 +416,7 @@ export default function DepositsPage() {
                                     selectedIds.size === filteredPending.length && filteredPending.length > 0
                                   }
                                   onCheckedChange={handleSelectAll}
+                                  aria-label="전체 선택"
                                 />
                               </TableHead>
                               <TableHead className="w-[90px]">
@@ -445,6 +447,7 @@ export default function DepositsPage() {
                                     <Checkbox
                                       checked={selectedIds.has(sale.id)}
                                       onCheckedChange={() => toggleSelect(sale.id)}
+                                      aria-label={`${sale.product_name} 선택`}
                                     />
                                   </TableCell>
                                   <TableCell className="text-muted-foreground tabular-nums">
@@ -510,6 +513,7 @@ export default function DepositsPage() {
                                 checked={selectedIds.has(sale.id)}
                                 onCheckedChange={() => toggleSelect(sale.id)}
                                 className="mt-0.5"
+                                aria-label={`${sale.product_name} 선택`}
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
@@ -619,7 +623,7 @@ export default function DepositsPage() {
                                 <TableCell className="pr-4">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="더보기">
                                         <MoreHorizontal className="h-3.5 w-3.5" />
                                       </Button>
                                     </DropdownMenuTrigger>

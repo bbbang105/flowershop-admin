@@ -89,6 +89,7 @@ export default function SettingsPage() {
                       )}
                       className="h-8 text-sm bg-background"
                       aria-label={`${card.name} 수수료율`}
+                      inputMode="decimal"
                     />
                     <span className="text-xs text-muted-foreground shrink-0">%</span>
                   </div>
@@ -101,6 +102,7 @@ export default function SettingsPage() {
                       )}
                       className="h-8 text-sm bg-background"
                       aria-label={`${card.name} 입금 주기`}
+                      inputMode="numeric"
                     />
                     <span className="text-xs text-muted-foreground shrink-0">일</span>
                   </div>

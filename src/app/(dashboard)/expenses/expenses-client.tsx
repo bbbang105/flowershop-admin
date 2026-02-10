@@ -340,17 +340,18 @@ export function ExpensesClient({
           size="icon"
           className="h-9 w-9"
           onClick={() => setIsSettingsOpen(true)}
-          title="설정"
+          aria-label="지출 설정"
         >
           <Settings className="w-4 h-4 text-muted-foreground" />
         </Button>
         <div className="relative flex-1 min-w-[150px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="검색..."
+            placeholder="검색…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 bg-background"
+            aria-label="지출 검색"
           />
         </div>
       </div>
@@ -444,6 +445,7 @@ export function ExpensesClient({
                             e.stopPropagation();
                             handleEdit(expense);
                           }}
+                          aria-label="수정"
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -455,6 +457,7 @@ export function ExpensesClient({
                             e.stopPropagation();
                             handleDelete(expense);
                           }}
+                          aria-label="삭제"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -493,7 +496,7 @@ export function ExpensesClient({
           filteredExpenses.map((expense) => (
             <Card
               key={expense.id}
-              className="p-4 cursor-pointer hover:bg-muted/30 active:bg-muted active:scale-[0.99] transition-all touch-manipulation"
+              className="p-4 cursor-pointer hover:bg-muted/30 active:bg-muted active:scale-[0.99] transition-colors touch-manipulation"
               onClick={() => handleSelectExpense(expense)}
             >
               <div className="flex items-center justify-between gap-3">
@@ -584,7 +587,7 @@ export function ExpensesClient({
                     key={pm.id}
                     type="button"
                     className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
+                      "px-3 py-1.5 rounded-full text-xs font-medium transition-colors border",
                       selectedPaymentMethod === pm.value
                         ? "ring-2 ring-offset-1 ring-brand/50"
                         : "border-border text-muted-foreground hover:border-foreground/30"
@@ -768,7 +771,7 @@ export function ExpensesClient({
                       key={pm.id}
                       type="button"
                       className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
+                        "px-3 py-1.5 rounded-full text-xs font-medium transition-colors border",
                         editPaymentMethod === pm.value
                           ? "ring-2 ring-offset-1 ring-brand/50"
                           : "border-border text-muted-foreground hover:border-foreground/30"

@@ -9,8 +9,8 @@ import {
   ArrowUpRight,
   AlertCircle,
   ShoppingBag,
-  TrendingUp,
-  TrendingDown,
+  UserPlus,
+  UserCheck,
   Users,
   Loader2,
 } from 'lucide-react';
@@ -88,7 +88,7 @@ function BarList({
           </div>
           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <div
-              className={`h-full ${barColor} rounded-full transition-all`}
+              className={`h-full ${barColor} rounded-full transition-[width]`}
               style={{ width: `${Math.max(item.percentage, 3)}%` }}
             />
           </div>
@@ -457,7 +457,7 @@ export function DashboardClient() {
             <h2 className="text-sm font-semibold text-foreground">
               {monthOptions.find((o) => o.value === selectedMonth)?.label || '이번 달'} 분석
             </h2>
-            {isMonthLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            {isMonthLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="로딩 중" />}
           </div>
           <p className="text-xs text-muted-foreground mt-1">어떤 상품이 잘 팔렸는지, 어떤 결제방식이 많았는지 한눈에 볼 수 있어요</p>
         </div>
@@ -473,7 +473,7 @@ export function DashboardClient() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">구매 고객</p>
-                    <p className="text-base font-bold text-foreground">{customerStats.totalCustomers}명</p>
+                    <p className="text-base font-bold text-foreground tabular-nums">{customerStats.totalCustomers}명</p>
                   </div>
                 </div>
               </CardContent>
@@ -482,11 +482,11 @@ export function DashboardClient() {
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                    <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">첫 방문</p>
-                    <p className="text-base font-bold text-foreground">{customerStats.newCustomers}명</p>
+                    <p className="text-base font-bold text-foreground tabular-nums">{customerStats.newCustomers}명</p>
                   </div>
                 </div>
               </CardContent>
@@ -495,11 +495,11 @@ export function DashboardClient() {
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <TrendingDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">다시 온 고객</p>
-                    <p className="text-base font-bold text-foreground">{customerStats.returningCustomers}명</p>
+                    <p className="text-base font-bold text-foreground tabular-nums">{customerStats.returningCustomers}명</p>
                   </div>
                 </div>
               </CardContent>
@@ -588,7 +588,7 @@ export function DashboardClient() {
             <Card>
               <CardContent className="p-4">
                 <h3 className="text-sm font-medium text-foreground mb-1 flex items-center gap-2">
-                  <TrendingDown className="h-3.5 w-3.5 text-brand" />
+                  <ShoppingBag className="h-3.5 w-3.5 text-brand" />
                   지출 카테고리
                 </h3>
                 <p className="text-[11px] text-muted-foreground mb-4">꽃 구매, 배달비, 임대료 등 어디에 돈을 쓰고 있는지 보여줘요</p>

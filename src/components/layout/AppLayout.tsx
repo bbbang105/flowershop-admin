@@ -38,7 +38,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       />
 
       <div className={cn(
-        'transition-all duration-200',
+        'transition-[margin] duration-200',
         isCollapsed ? 'lg:ml-16' : 'lg:ml-60'
       )}>
         <Header onMenuClick={() => setSidebarOpen(true)} />

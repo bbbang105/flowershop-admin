@@ -381,13 +381,13 @@ export function CalendarClient() {
                 {format(currentMonth, 'yyyy년 M월', { locale: ko })}
               </h2>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon-sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                <Button variant="ghost" size="icon-sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} aria-label="이전 달">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setCurrentMonth(new Date()); setSelectedDate(new Date()); }}>
                   오늘
                 </Button>
-                <Button variant="ghost" size="icon-sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                <Button variant="ghost" size="icon-sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} aria-label="다음 달">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -494,7 +494,7 @@ export function CalendarClient() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-semibold text-foreground">{editingId ? '예약 수정' : '새 예약'}</p>
-                  <Button variant="ghost" size="icon-sm" onClick={resetForm}>
+                  <Button variant="ghost" size="icon-sm" onClick={resetForm} aria-label="폼 닫기">
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -536,6 +536,8 @@ export function CalendarClient() {
                         onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
                         placeholder="010-0000-0000"
                         className="h-8 text-sm"
+                        inputMode="tel"
+                        autoComplete="tel"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -664,10 +666,10 @@ export function CalendarClient() {
                         )}
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <Button variant="ghost" size="icon-sm" onClick={() => startEdit(r)}>
+                        <Button variant="ghost" size="icon-sm" onClick={() => startEdit(r)} aria-label="수정">
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => setDeleteTarget(r)}>
+                        <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => setDeleteTarget(r)} aria-label="삭제">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>

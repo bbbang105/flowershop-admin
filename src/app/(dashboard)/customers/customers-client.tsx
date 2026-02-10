@@ -265,10 +265,11 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
         <div className="relative flex-1 min-w-[180px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="이름/연락처 검색..."
+            placeholder="이름/연락처 검색\u2026"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 bg-background"
+            aria-label="고객 검색"
           />
         </div>
       </div>
@@ -306,7 +307,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
             return (
               <Card
                 key={customer.id}
-                className="group cursor-pointer hover:bg-muted/30 active:bg-muted active:scale-[0.99] transition-all touch-manipulation"
+                className="group cursor-pointer hover:bg-muted/30 active:bg-muted active:scale-[0.99] transition-colors touch-manipulation"
                 onClick={() => handleSelectCustomer(customer)}
               >
                 <CardContent className="p-4">
@@ -334,6 +335,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                         size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-foreground"
                         onClick={(e) => { e.stopPropagation(); handleEdit(customer); }}
+                        aria-label={`${customer.name} 수정`}
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
@@ -342,6 +344,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                         size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         onClick={(e) => { e.stopPropagation(); handleDelete(customer); }}
+                        aria-label={`${customer.name} 삭제`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -390,7 +393,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
           <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e); }} className="space-y-5 pt-2">
             <div className="space-y-2">
               <Label>고객명 *</Label>
-              <Input name="name" placeholder="홍길동" required className="bg-muted" />
+              <Input name="name" placeholder="홍길동" required className="bg-muted" autoComplete="name" />
             </div>
             <div className="space-y-2">
               <Label>연락처 *</Label>
@@ -400,6 +403,8 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                 onChange={(e) => handlePhoneChange(e.target.value)}
                 placeholder="010-0000-0000"
                 required
+                inputMode="tel"
+                autoComplete="tel"
                 className={cn("bg-muted", phoneDuplicate && "border-red-500 focus-visible:ring-red-500")}
               />
               {phoneDuplicate && (
@@ -435,7 +440,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                 name="note"
                 value={noteValue}
                 onChange={(e) => setNoteValue(e.target.value.slice(0, 200))}
-                placeholder="고객에 대한 메모를 입력하세요"
+                placeholder="고객에 대한 메모를 입력하세요\u2026"
                 className="bg-muted min-h-[80px] resize-none"
                 maxLength={200}
               />
@@ -559,8 +564,9 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                               router.push(`/sales?year=${year}&month=${month}&saleId=${sale.id}`);
                             }}
                             title="매출 상세 보기"
+                            aria-label="매출 상세 보기"
                           >
-                            <ExternalLink className="w-3.5 h-3.5" />
+                            <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
                         </div>
                       </div>
@@ -630,7 +636,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
             <form onSubmit={(e) => { e.preventDefault(); handleUpdate(e); }} className="space-y-5 pt-2">
               <div className="space-y-2">
                 <Label>고객명 *</Label>
-                <Input name="name" defaultValue={editingCustomer.name} required className="bg-muted" />
+                <Input name="name" defaultValue={editingCustomer.name} required className="bg-muted" autoComplete="name" />
               </div>
               <div className="space-y-2">
                 <Label>연락처 *</Label>
@@ -639,6 +645,8 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                   value={editPhoneValue}
                   onChange={(e) => handleEditPhoneChange(e.target.value)}
                   required
+                  inputMode="tel"
+                  autoComplete="tel"
                   className={cn("bg-muted", editPhoneDuplicate && "border-red-500 focus-visible:ring-red-500")}
                 />
                 {editPhoneDuplicate && (
@@ -672,7 +680,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                   name="note"
                   value={editNoteValue}
                   onChange={(e) => setEditNoteValue(e.target.value.slice(0, 200))}
-                  placeholder="고객에 대한 메모를 입력하세요"
+                  placeholder="고객에 대한 메모를 입력하세요\u2026"
                   className="bg-muted min-h-[80px] resize-none"
                   maxLength={200}
                 />
