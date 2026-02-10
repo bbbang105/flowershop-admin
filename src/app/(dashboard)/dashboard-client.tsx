@@ -322,8 +322,8 @@ export function DashboardClient() {
                   const status = statusMap.get(r.status);
                   return (
                     <div key={r.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                      <span className="text-xs font-medium text-muted-foreground w-10 pt-0.5 shrink-0 tabular-nums">
-                        {r.time || '--:--'}
+                      <span className="text-xs font-medium text-muted-foreground w-11 pt-0.5 shrink-0 tabular-nums">
+                        {r.time ? r.time.slice(0, 5) : '--:--'}
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">

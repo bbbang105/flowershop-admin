@@ -93,7 +93,7 @@ export function SalesSettingsModal({
           <DialogTitle>카테고리 관리</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col space-y-4 py-4">
+        <div className="flex-1 min-h-0 flex flex-col space-y-4 py-4">
           <div className="flex gap-2">
             <Input
               placeholder="새 카테고리 이름"

@@ -370,9 +370,9 @@ export function CalendarClient() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
         {/* Calendar */}
-        <Card>
+        <Card className="lg:sticky lg:top-4">
           <CardContent className="p-4">
             {/* Month navigation */}
             <div className="flex items-center justify-between mb-4">
@@ -464,7 +464,7 @@ export function CalendarClient() {
         </Card>
 
         {/* Side Panel */}
-        <div className="space-y-3">
+        <div className="space-y-3 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
           {/* Selected date header */}
           <Card>
             <CardContent className="p-4">
@@ -541,6 +541,7 @@ export function CalendarClient() {
                       <Label className="text-xs text-muted-foreground">예상 금액</Label>
                       <Input
                         type="number"
+                        step={10000}
                         value={formData.estimated_amount}
                         onChange={(e) => setFormData({ ...formData, estimated_amount: e.target.value })}
                         placeholder="50000"
