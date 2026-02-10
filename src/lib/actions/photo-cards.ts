@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/auth-guard';
 import { PhotoCard, PhotoFile } from '@/types/database';
 
 const MAX_PHOTOS_PER_CARD = 10;
@@ -68,6 +69,7 @@ export async function getPhotoCardById(id: string): Promise<PhotoCard | null> {
 }
 
 export async function createPhotoCard(formData: FormData): Promise<PhotoCard> {
+  await requireAuth();
   const supabase = await createClient();
   
   const title = formData.get('title') as string;
@@ -109,6 +111,7 @@ export async function createPhotoCard(formData: FormData): Promise<PhotoCard> {
 }
 
 export async function updatePhotoCard(id: string, formData: FormData): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   const title = formData.get('title') as string;
@@ -147,6 +150,7 @@ export async function updatePhotoCard(id: string, formData: FormData): Promise<v
 }
 
 export async function deletePhotoCard(id: string): Promise<PhotoFile[]> {
+  await requireAuth();
   const supabase = await createClient();
   
   // Get card to retrieve photo URLs for storage cleanup
@@ -172,6 +176,7 @@ export async function deletePhotoCard(id: string): Promise<PhotoFile[]> {
 
 
 export async function uploadPhotos(cardId: string, formData: FormData): Promise<PhotoFile[]> {
+  await requireAuth();
   const supabase = await createClient();
   
   // Get current card to check photo count
@@ -235,6 +240,7 @@ export async function uploadPhotos(cardId: string, formData: FormData): Promise<
 }
 
 export async function deletePhoto(cardId: string, photoUrl: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   // Get current card
@@ -276,6 +282,7 @@ export async function deletePhoto(cardId: string, photoUrl: string): Promise<voi
 }
 
 export async function deletePhotosFromStorage(photos: PhotoFile[]): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   const filePaths = photos
@@ -291,6 +298,7 @@ export async function deletePhotosFromStorage(photos: PhotoFile[]): Promise<void
 }
 
 export async function reorderPhotos(cardId: string, photos: PhotoFile[]): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -388,6 +396,7 @@ export async function createOrUpdatePhotoCardForSale(
   description?: string | null,
   tags?: string[]
 ): Promise<PhotoCard> {
+  await requireAuth();
   const supabase = await createClient();
   
   // Check if card already exists for this sale

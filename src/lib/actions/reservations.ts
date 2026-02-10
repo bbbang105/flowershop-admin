@@ -1,0 +1,146 @@
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth-guard';
+import { createSale } from './sales';
+import type { Reservation, ReservationStatus, Sale } from '@/types/database';
+import { reservationSchema, uuidSchema } from '@/lib/validations';
+
+export async function getReservations(month: string): Promise<{ success: boolean; data?: Reservation[]; error?: string }> {
+  const supabase = await createClient();
+  const [year, m] = month.split('-').map(Number);
+  const startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
+  const endDate = new Date(year, m, 0).toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('*')
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date')
+    .order('time', { nullsFirst: false });
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: data as Reservation[] };
+}
+
+export async function createReservation(formData: {
+  date: string;
+  time?: string;
+  customer_name: string;
+  customer_phone?: string;
+  title: string;
+  description?: string;
+  estimated_amount?: number;
+  status?: ReservationStatus;
+}): Promise<{ success: boolean; data?: Reservation; error?: string }> {
+  await requireAuth();
+
+  const parsed = reservationSchema.safeParse(formData);
+  if (!parsed.success) {
+    return { success: false, error: `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}` };
+  }
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('reservations')
+    .insert({
+      date: parsed.data.date,
+      time: parsed.data.time || null,
+      customer_name: parsed.data.customer_name,
+      customer_phone: parsed.data.customer_phone || null,
+      title: parsed.data.title,
+      description: parsed.data.description || null,
+      estimated_amount: parsed.data.estimated_amount || 0,
+      status: parsed.data.status || 'pending',
+    })
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: data as Reservation };
+}
+
+export async function updateReservation(
+  id: string,
+  formData: {
+    date?: string;
+    time?: string | null;
+    customer_name?: string;
+    customer_phone?: string | null;
+    title?: string;
+    description?: string | null;
+    estimated_amount?: number;
+    status?: ReservationStatus;
+    sale_id?: string | null;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  await requireAuth();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('reservations')
+    .update({ ...formData, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function deleteReservation(id: string): Promise<{ success: boolean; error?: string }> {
+  await requireAuth();
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) return { success: false, error: '올바르지 않은 ID입니다' };
+  const supabase = await createClient();
+  const { error } = await supabase.from('reservations').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+/**
+ * 예약을 매출로 변환한다.
+ * 1) 예약 조회 → 2) 매출 생성 (FormData 사용) → 3) 예약 상태 completed + sale_id 연결
+ */
+export async function convertReservationToSale(
+  reservationId: string,
+  saleFormData: FormData,
+): Promise<{ success: boolean; sale?: Sale; error?: string }> {
+  await requireAuth();
+  const supabase = await createClient();
+
+  // 1. 예약 조회
+  const { data: reservation, error: fetchError } = await supabase
+    .from('reservations')
+    .select('*')
+    .eq('id', reservationId)
+    .single();
+
+  if (fetchError || !reservation) {
+    return { success: false, error: '예약을 찾을 수 없습니다' };
+  }
+
+  // 2. FormData에 reservation_id 포함하여 매출 생성
+  saleFormData.set('reservation_id', reservationId);
+
+  try {
+    const sale = await createSale(saleFormData);
+
+    // 3. 예약 상태 업데이트: completed + sale_id 연결
+    await supabase
+      .from('reservations')
+      .update({
+        status: 'completed',
+        sale_id: sale.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', reservationId);
+
+    revalidatePath('/calendar');
+    revalidatePath('/');
+    return { success: true, sale: sale as Sale };
+  } catch (error: any) {
+    return { success: false, error: error.message || '매출 등록에 실패했습니다' };
+  }
+}

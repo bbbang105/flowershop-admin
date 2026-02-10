@@ -28,7 +28,7 @@ export function GalleryClient({ initialData, tags: initialTags }: GalleryClientP
   const [editingCard, setEditingCard] = useState<PhotoCard | null>(null);
   const [tags, setTags] = useState<PhotoTag[]>(initialTags);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
-  
+
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -40,7 +40,7 @@ export function GalleryClient({ initialData, tags: initialTags }: GalleryClientP
 
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
-    
+
     setIsLoading(true);
     try {
       const response = await getPhotoCards(selectedTag || undefined, cursor || undefined);
@@ -132,12 +132,11 @@ export function GalleryClient({ initialData, tags: initialTags }: GalleryClientP
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">사진첩</h1>
-          <p className="text-gray-500 mt-1">작업물 사진을 관리하세요</p>
+          <h1 className="text-xl font-semibold text-foreground tracking-tight">사진첩</h1>
+          <p className="text-sm text-muted-foreground mt-1">완성한 꽃 작업물 사진을 저장하고 태그로 분류할 수 있어요</p>
         </div>
         <Button
           onClick={() => setIsUploadModalOpen(true)}
-          className="bg-rose-500 hover:bg-rose-600"
         >
           <Plus className="w-4 h-4 mr-2" />
           새 카드 추가
@@ -170,10 +169,10 @@ export function GalleryClient({ initialData, tags: initialTags }: GalleryClientP
       {/* Infinite scroll trigger */}
       <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
         {isLoading && (
-          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         )}
         {!hasMore && cards.length > 0 && (
-          <p className="text-sm text-gray-400">모든 카드를 불러왔습니다</p>
+          <p className="text-sm text-muted-foreground">모든 카드를 불러왔습니다</p>
         )}
       </div>
 

@@ -71,7 +71,7 @@ export function PhotoCardDialog({ card, onClose, onEdit, onDelete }: PhotoCardDi
 
   const handleDownloadCurrent = async () => {
     if (!card.photos[currentIndex]) return;
-    
+
     setIsDownloading(true);
     try {
       const result = await downloadPhoto(card.photos[currentIndex]);
@@ -117,14 +117,14 @@ export function PhotoCardDialog({ card, onClose, onEdit, onDelete }: PhotoCardDi
         <div className="space-y-4">
           {card.photos.length > 0 && (
             <div className="relative">
-              <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+              <div className="aspect-video bg-muted rounded-lg overflow-hidden">
                 <img
                   src={card.photos[currentIndex].url}
                   alt={`${card.title} - ${currentIndex + 1}`}
                   className="w-full h-full object-contain"
                 />
               </div>
-              
+
               {card.photos.length > 1 && (
                 <>
                   <button
@@ -154,7 +154,7 @@ export function PhotoCardDialog({ card, onClose, onEdit, onDelete }: PhotoCardDi
                   key={photo.url}
                   onClick={() => setCurrentIndex(index)}
                   className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
-                    index === currentIndex ? 'border-rose-500' : 'border-transparent'
+                    index === currentIndex ? 'border-brand' : 'border-transparent'
                   }`}
                 >
                   <img src={photo.url} alt="" className="w-full h-full object-cover" />
@@ -164,19 +164,19 @@ export function PhotoCardDialog({ card, onClose, onEdit, onDelete }: PhotoCardDi
           )}
 
           <div className="space-y-3">
-            <div className="text-sm text-gray-500 space-y-1">
+            <div className="text-sm text-muted-foreground space-y-1">
               <p>생성: {createdDate}</p>
               {isUpdated && <p>수정: {updatedDate}</p>}
             </div>
-            
+
             {card.description && (
-              <p className="text-gray-700">{card.description}</p>
+              <p className="text-foreground">{card.description}</p>
             )}
 
             {card.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {card.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="bg-gray-100">
+                  <Badge key={tag} variant="secondary" className="bg-muted">
                     {tag}
                   </Badge>
                 ))}
@@ -186,7 +186,7 @@ export function PhotoCardDialog({ card, onClose, onEdit, onDelete }: PhotoCardDi
             {card.sale_id && (
               <Link
                 href={`/sales?highlight=${card.sale_id}`}
-                className="inline-flex items-center gap-1.5 text-sm text-rose-600 hover:text-rose-700 hover:underline"
+                className="inline-flex items-center gap-1.5 text-sm text-brand hover:text-brand hover:underline"
               >
                 <ExternalLink className="w-4 h-4" />
                 연결된 매출 보기
@@ -195,8 +195,8 @@ export function PhotoCardDialog({ card, onClose, onEdit, onDelete }: PhotoCardDi
           </div>
 
           {showDeleteConfirm ? (
-            <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
-              <p className="text-sm text-red-700">정말 삭제하시겠습니까?</p>
+            <div className="flex items-center justify-between p-4 bg-destructive/10 rounded-lg">
+              <p className="text-sm text-destructive">정말 삭제하시겠습니까?</p>
               <div className="flex gap-2">
                 <Button
                   size="sm"
@@ -246,7 +246,7 @@ export function PhotoCardDialog({ card, onClose, onEdit, onDelete }: PhotoCardDi
               </Button>
               <Button
                 variant="outline"
-                className="text-red-600 hover:text-red-700"
+                className="text-destructive hover:text-destructive"
                 onClick={() => setShowDeleteConfirm(true)}
               >
                 <Trash2 className="w-4 h-4 mr-2" />

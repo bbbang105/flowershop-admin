@@ -18,7 +18,7 @@ const COMPRESSION_OPTIONS = {
   useWebWorker: true,
 };
 
-type PhotoItem = 
+type PhotoItem =
   | { type: 'existing'; photo: PhotoFile }
   | { type: 'new'; file: File; preview: string };
 
@@ -36,7 +36,7 @@ export function SalePhotoUpload({ photoItems, onChange, disabled }: SalePhotoUpl
   const addFiles = useCallback(async (files: File[]) => {
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
     const totalCount = photoItems.length + imageFiles.length;
-    
+
     if (totalCount > MAX_PHOTOS) {
       toast.error(`사진은 최대 ${MAX_PHOTOS}장까지 등록할 수 있습니다`);
       return;
@@ -45,21 +45,21 @@ export function SalePhotoUpload({ photoItems, onChange, disabled }: SalePhotoUpl
     setIsCompressing(true);
     try {
       const newItems: PhotoItem[] = [];
-      
+
       for (const file of imageFiles) {
         let processedFile = file;
-        
+
         if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
           processedFile = await imageCompression(file, COMPRESSION_OPTIONS);
         }
-        
+
         newItems.push({
           type: 'new',
           file: new File([processedFile], file.name, { type: processedFile.type }),
           preview: URL.createObjectURL(processedFile),
         });
       }
-      
+
       onChange([...photoItems, ...newItems]);
     } catch {
       toast.error('이미지 처리 중 오류가 발생했습니다');
@@ -110,27 +110,27 @@ export function SalePhotoUpload({ photoItems, onChange, disabled }: SalePhotoUpl
   return (
     <div className="space-y-2">
       <Label>사진 ({photoItems.length}/{MAX_PHOTOS}) *</Label>
-      
+
       <div
         className={cn(
-          "border-2 border-dashed border-gray-200 rounded-lg p-6 text-center transition-colors",
-          isCompressing || disabled ? "opacity-50 pointer-events-none" : "hover:border-rose-300"
+          "border-2 border-dashed border-border rounded-lg p-6 text-center transition-colors",
+          isCompressing || disabled ? "opacity-50 pointer-events-none" : "hover:bg-brand-muted"
         )}
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       >
         {isCompressing ? (
           <>
-            <Loader2 className="w-8 h-8 mx-auto text-rose-400 mb-2 animate-spin" />
-            <p className="text-sm text-gray-500">이미지 처리 중...</p>
+            <Loader2 className="w-8 h-8 mx-auto text-brand mb-2 animate-spin" />
+            <p className="text-sm text-muted-foreground">이미지 처리 중...</p>
           </>
         ) : (
           <>
-            <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-            <p className="text-sm text-gray-500 mb-1">
+            <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground mb-1">
               이미지를 드래그하거나 클릭하여 업로드
             </p>
-            <p className="text-xs text-gray-400 mb-2">
+            <p className="text-xs text-muted-foreground mb-2">
               {MAX_FILE_SIZE_MB}MB 초과 시 자동 압축
             </p>
             <input
@@ -168,7 +168,7 @@ export function SalePhotoUpload({ photoItems, onChange, disabled }: SalePhotoUpl
                 'relative aspect-square',
                 !disabled && 'cursor-move',
                 draggedIndex === index && 'opacity-50',
-                dragOverIndex === index && 'ring-2 ring-rose-500 ring-offset-2'
+                dragOverIndex === index && 'ring-2 ring-brand ring-offset-2'
               )}
             >
               <img
@@ -184,7 +184,7 @@ export function SalePhotoUpload({ photoItems, onChange, disabled }: SalePhotoUpl
                   <button
                     type="button"
                     onClick={() => removePhoto(index)}
-                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
+                    className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5 hover:bg-destructive/90"
                   >
                     <X className="w-3 h-3" />
                   </button>

@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/auth-guard';
 import { PhotoTag } from '@/types/database';
 
 export async function getPhotoTags(): Promise<PhotoTag[]> {
@@ -30,6 +31,7 @@ function getRandomColor(): string {
 }
 
 export async function createPhotoTag(name: string, color?: string): Promise<PhotoTag | null> {
+  await requireAuth();
   const supabase = await createClient();
   
   const trimmedName = name.trim();
@@ -58,6 +60,7 @@ export async function createPhotoTag(name: string, color?: string): Promise<Phot
 }
 
 export async function updatePhotoTag(id: string, name: string, color: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   const trimmedName = name.trim();
@@ -80,6 +83,7 @@ export async function updatePhotoTag(id: string, name: string, color: string): P
 }
 
 export async function deletePhotoTag(id: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   // 먼저 태그 이름 가져오기

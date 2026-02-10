@@ -13,8 +13,8 @@ interface PhotoCardGridProps {
 export function PhotoCardGrid({ cards, tags, onCardClick }: PhotoCardGridProps) {
   if (cards.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-        <Image className="w-16 h-16 mb-4 text-gray-300" />
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <Image className="w-16 h-16 mb-4 text-muted-foreground/50" />
         <p className="text-lg font-medium">등록된 사진이 없습니다</p>
         <p className="text-sm mt-1">새 카드를 추가해서 작업물을 기록해보세요</p>
       </div>

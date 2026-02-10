@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import type { Sale } from '@/types/database';
+import type { Sale, Reservation } from '@/types/database';
 
 export interface DashboardSummary {
   totalAmount: number;
@@ -79,6 +79,46 @@ export async function getRecentSales(limit: number = 10): Promise<Sale[]> {
 
   if (error) throw error;
   return data as Sale[];
+}
+
+export async function getTodayReservations(): Promise<Reservation[]> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('*')
+    .eq('date', today)
+    .order('time', { nullsFirst: false });
+
+  if (error) throw error;
+  return (data || []) as Reservation[];
+}
+
+export async function getMonthExpenseTotal(month?: string): Promise<number> {
+  const supabase = await createClient();
+
+  let startDate: string;
+  let endDate: string;
+
+  if (month) {
+    const [year, m] = month.split('-').map(Number);
+    startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
+    endDate = new Date(year, m, 0).toISOString().split('T')[0];
+  } else {
+    const now = new Date();
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  }
+
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('total_amount')
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  if (error) throw error;
+  return (data || []).reduce((sum, e) => sum + e.total_amount, 0);
 }
 
 export async function getMonthSummary(month?: string): Promise<DashboardSummary> {

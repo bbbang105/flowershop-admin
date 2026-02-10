@@ -40,3 +40,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# kiro
+.kiro
+
+# mcp (contains access tokens)
+.mcp.json
+
+### Claude ###
+.serena
+/docs
+
+### IDE ####
+.idea

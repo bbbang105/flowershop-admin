@@ -5,7 +5,6 @@ export {
   createSale,
   updateSale,
   deleteSale,
-  confirmDeposits,
   uploadSalePhotos,
   deleteSalePhoto,
 } from './sales';

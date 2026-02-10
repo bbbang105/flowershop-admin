@@ -23,8 +23,8 @@ export function PhotoCard({ card, tagColorMap, onClick }: PhotoCardProps) {
   const renderCollage = () => {
     if (photoCount === 0) {
       return (
-        <div className="w-full h-full flex items-center justify-center bg-gray-100">
-          <ImageIcon className="w-10 h-10 text-gray-300" />
+        <div className="w-full h-full flex items-center justify-center bg-muted">
+          <ImageIcon className="w-10 h-10 text-muted-foreground" />
         </div>
       );
     }
@@ -82,15 +82,15 @@ export function PhotoCard({ card, tagColorMap, onClick }: PhotoCardProps) {
 
   return (
     <Card
-      className="group cursor-pointer overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all"
+      className="group cursor-pointer overflow-hidden hover:shadow-lg transition-all"
       onClick={onClick}
     >
-      <div className="relative aspect-square bg-gray-100 overflow-hidden rounded-t-lg">
+      <div className="relative aspect-square bg-muted overflow-hidden rounded-t-lg">
         {renderCollage()}
       </div>
-      
+
       <div className="p-2.5">
-        <h3 className="font-medium text-gray-900 truncate text-sm">{card.title}</h3>
+        <h3 className="font-medium text-foreground truncate text-sm">{card.title}</h3>
         {card.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {card.tags.slice(0, 3).map((tagName) => {
@@ -108,7 +108,7 @@ export function PhotoCard({ card, tagColorMap, onClick }: PhotoCardProps) {
             })}
           </div>
         )}
-        <p className="text-[11px] text-gray-400 mt-0.5">
+        <p className="text-[11px] text-muted-foreground mt-0.5">
           {isUpdated ? `수정 ${updatedDate}` : createdDate}
         </p>
       </div>
