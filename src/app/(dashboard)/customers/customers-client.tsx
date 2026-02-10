@@ -20,8 +20,8 @@ import type { Customer, Sale } from '@/types/database';
 import type { SaleCategory, PaymentMethod } from '@/lib/actions/sale-settings';
 
 const gradeLabels: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-  new: { label: '신규', icon: '', color: 'text-gray-600', bg: 'bg-gray-100' },
-  regular: { label: '단골', icon: '🌟', color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  new: { label: '신규', icon: '', color: 'text-muted-foreground', bg: 'bg-muted' },
+  regular: { label: '단골', icon: '🌟', color: 'text-yellow-600', bg: 'bg-muted' },
   vip: { label: 'VIP', icon: '👑', color: 'text-purple-600', bg: 'bg-purple-50' },
   blacklist: { label: '블랙', icon: '⚠️', color: 'text-red-600', bg: 'bg-red-50' },
 };
@@ -49,6 +49,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
   const [customerSales, setCustomerSales] = useState<Sale[]>([]);
   const [isLoadingSales, setIsLoadingSales] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [phoneValue, setPhoneValue] = useState('');
   const [editPhoneValue, setEditPhoneValue] = useState('');
   const [phoneDuplicate, setPhoneDuplicate] = useState<{ name: string } | null>(null);
@@ -57,13 +58,13 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
   const editPhoneCheckRef = useRef<NodeJS.Timeout | null>(null);
 
   // 카테고리/결제방식 라벨 맵 생성
-  const categoryLabels = useMemo(() => 
+  const categoryLabels = useMemo(() =>
     Object.fromEntries(initialCategories.map(c => [c.value, c.label])), [initialCategories]);
-  const categoryColors = useMemo(() => 
+  const categoryColors = useMemo(() =>
     Object.fromEntries(initialCategories.map(c => [c.value, c.color])), [initialCategories]);
-  const paymentLabels = useMemo(() => 
+  const paymentLabels = useMemo(() =>
     Object.fromEntries(initialPayments.map(p => [p.value, p.label])), [initialPayments]);
-  const paymentColors = useMemo(() => 
+  const paymentColors = useMemo(() =>
     Object.fromEntries(initialPayments.map(p => [p.value, p.color])), [initialPayments]);
 
   // 연락처 중복 체크 (등록)
@@ -71,9 +72,9 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
     const formatted = formatPhoneNumber(value);
     setPhoneValue(formatted);
     setPhoneDuplicate(null);
-    
+
     if (phoneCheckRef.current) clearTimeout(phoneCheckRef.current);
-    
+
     if (formatted.length >= 12) { // 010-0000-000 이상
       phoneCheckRef.current = setTimeout(async () => {
         const duplicate = await checkPhoneDuplicate(formatted);
@@ -87,9 +88,9 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
     const formatted = formatPhoneNumber(value);
     setEditPhoneValue(formatted);
     setEditPhoneDuplicate(null);
-    
+
     if (editPhoneCheckRef.current) clearTimeout(editPhoneCheckRef.current);
-    
+
     if (formatted.length >= 12 && editingCustomer) {
       editPhoneCheckRef.current = setTimeout(async () => {
         const duplicate = await checkPhoneDuplicate(formatted, editingCustomer.id);
@@ -187,6 +188,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
       await deleteCustomer(deleteTarget.id);
       setDeleteTarget(null);
@@ -196,6 +198,8 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
     } catch (error) {
       console.error('Failed to delete customer:', error);
       toast.error('고객 삭제에 실패했습니다');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -204,10 +208,10 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">고객 관리</h1>
-          <p className="text-gray-500 mt-1">고객 정보와 구매 이력을 관리하세요</p>
+          <h1 className="text-xl font-semibold text-foreground tracking-tight">고객 관리</h1>
+          <p className="text-sm text-muted-foreground mt-1">고객 정보와 구매 이력을 관리하세요</p>
         </div>
-        <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setPhoneValue(''); setPhoneDuplicate(null); }} className="bg-rose-500 hover:bg-rose-600">
+        <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setPhoneValue(''); setPhoneDuplicate(null); }}>
           <Plus className="w-4 h-4 mr-2" />
           고객 등록
         </Button>
@@ -215,28 +219,28 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4">
-        <Card className="border-0 shadow-sm">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                <Users className="h-5 w-5 text-blue-600" />
+              <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                <Users className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">전체 고객</p>
-                <p className="text-xl font-bold text-gray-900">{stats.total}명</p>
+                <p className="text-sm text-muted-foreground">전체 고객</p>
+                <p className="text-xl font-bold text-foreground">{stats.total}명</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-sm">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
                 <span className="text-lg">🌟</span>
               </div>
               <div>
-                <p className="text-sm text-gray-500">단골/VIP</p>
-                <p className="text-xl font-bold text-gray-900">{stats.regular}명</p>
+                <p className="text-sm text-muted-foreground">단골/VIP</p>
+                <p className="text-xl font-bold text-foreground">{stats.regular}명</p>
               </div>
             </div>
           </CardContent>
@@ -246,7 +250,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <Select value={gradeFilter} onValueChange={setGradeFilter}>
-          <SelectTrigger className="w-[120px] bg-white border-gray-200">
+          <SelectTrigger className="w-[120px] bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -258,72 +262,92 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
           </SelectContent>
         </Select>
         <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input 
-            placeholder="이름/연락처 검색..." 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)} 
-            className="pl-9 bg-white border-gray-200" 
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="이름/연락처 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-background"
           />
         </div>
       </div>
 
 
       {/* Desktop Table */}
-      <Card className="border-0 shadow-sm overflow-hidden hidden md:block">
+      <Card className="overflow-hidden hidden md:block">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50/80">
-                <TableHead className="font-semibold text-gray-700 pl-6">고객명</TableHead>
-                <TableHead className="font-semibold text-gray-700 hidden lg:table-cell">연락처</TableHead>
-                <TableHead className="font-semibold text-gray-700 w-[100px]">등급</TableHead>
-                <TableHead className="font-semibold text-gray-700 text-right w-[80px]">구매횟수</TableHead>
-                <TableHead className="font-semibold text-gray-700 text-right">총구매액</TableHead>
-                <TableHead className="w-[100px] text-right pr-6"></TableHead>
+              <TableRow className="bg-muted/40">
+                <TableHead className="w-[120px] pl-6">고객명</TableHead>
+                <TableHead className="w-[140px]">연락처</TableHead>
+                <TableHead className="w-[100px]">등급</TableHead>
+                <TableHead className="w-[100px]">구매 횟수</TableHead>
+                <TableHead className="w-[120px] hidden lg:table-cell">총 구매액</TableHead>
+                <TableHead className="w-[100px] hidden lg:table-cell">최근 구매</TableHead>
+                <TableHead className="hidden xl:table-cell">메모</TableHead>
+                <TableHead className="w-[130px] text-right pr-6"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCustomers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-16 text-gray-500">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                        <Users className="w-6 h-6 text-gray-400" />
+                  <TableCell colSpan={8} className="text-center py-16 text-muted-foreground">
+                    {(gradeFilter !== 'all' || searchQuery) ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                          <Search className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                        <p>선택한 필터에 맞는 고객이 없습니다</p>
+                        <Button variant="outline" size="sm" onClick={() => { setGradeFilter('all'); setSearchQuery(''); }}>
+                          필터 초기화
+                        </Button>
                       </div>
-                      <p>등록된 고객이 없습니다</p>
-                      <Button variant="outline" size="sm" onClick={() => { setIsFormOpen(true); setNoteValue(''); setPhoneValue(''); setPhoneDuplicate(null); }}>
-                        첫 고객 등록하기
-                      </Button>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                          <Users className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                        <p>등록된 고객이 없습니다</p>
+                        <Button variant="outline" size="sm" onClick={() => { setIsFormOpen(true); setNoteValue(''); setPhoneValue(''); setPhoneDuplicate(null); }}>
+                          첫 고객 등록하기
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredCustomers.map((customer) => {
                   const grade = gradeLabels[customer.grade];
                   return (
-                    <TableRow 
-                      key={customer.id} 
-                      className="cursor-pointer hover:bg-gray-50/50 transition-colors"
+                    <TableRow
+                      key={customer.id}
+                      className="cursor-pointer hover:bg-muted/30 transition-colors"
                       onClick={() => handleSelectCustomer(customer)}
                     >
                       <TableCell className="pl-6">
-                        <span className="font-medium text-gray-900">{customer.name}</span>
+                        <span className="font-medium text-foreground">{customer.name}</span>
                       </TableCell>
-                      <TableCell className="text-gray-500 hidden lg:table-cell">{customer.phone}</TableCell>
+                      <TableCell className="text-muted-foreground">{customer.phone}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 text-xs font-medium rounded-md ${grade.bg} ${grade.color}`}>
                           {grade.icon} {grade.label}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right text-gray-600">{customer.total_purchase_count}회</TableCell>
-                      <TableCell className="text-right font-semibold text-gray-900">{formatCurrency(customer.total_purchase_amount)}</TableCell>
+                      <TableCell className="text-muted-foreground">{customer.total_purchase_count}회</TableCell>
+                      <TableCell className="font-semibold text-foreground hidden lg:table-cell">{formatCurrency(customer.total_purchase_amount)}</TableCell>
+                      <TableCell className="text-muted-foreground hidden lg:table-cell">
+                        {customer.last_purchase_date ? format(new Date(customer.last_purchase_date), 'yy.M.d', { locale: ko }) : '-'}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-muted-foreground text-sm truncate" title={customer.note || ''}>
+                        {customer.note || '-'}
+                      </TableCell>
                       <TableCell className="text-right pr-6">
                         <div className="flex gap-1 justify-end">
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-blue-500"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEdit(customer);
@@ -331,10 +355,10 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-red-500"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(customer);
@@ -356,37 +380,47 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
       {/* Mobile Card List */}
       <div className="md:hidden space-y-3">
         {filteredCustomers.length === 0 ? (
-          <Card className="border-0 shadow-sm p-8 text-center">
-            <div className="flex flex-col items-center gap-2 text-gray-500">
-              <Users className="w-8 h-8 text-gray-400" />
-              <p>등록된 고객이 없습니다</p>
-            </div>
+          <Card className="p-8 text-center">
+            {(gradeFilter !== 'all' || searchQuery) ? (
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <Search className="w-8 h-8 text-muted-foreground opacity-40" />
+                <p className="text-sm">선택한 필터에 맞는 고객이 없습니다</p>
+                <Button variant="outline" size="sm" onClick={() => { setGradeFilter('all'); setSearchQuery(''); }}>
+                  필터 초기화
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <Users className="w-8 h-8 text-muted-foreground" />
+                <p>등록된 고객이 없습니다</p>
+              </div>
+            )}
           </Card>
         ) : (
           filteredCustomers.map((customer) => {
             const grade = gradeLabels[customer.grade];
             return (
-              <Card 
+              <Card
                 key={customer.id}
-                className="border-0 shadow-sm p-4 cursor-pointer hover:shadow-md active:bg-gray-50 transition-all"
+                className="p-4 cursor-pointer hover:bg-muted/30 active:bg-muted transition-all"
                 onClick={() => handleSelectCustomer(customer)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-gray-900">{customer.name}</span>
+                      <span className="font-semibold text-foreground">{customer.name}</span>
                       <span className={`px-2 py-0.5 text-xs font-medium rounded ${grade.bg} ${grade.color}`}>
                         {grade.icon} {grade.label}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-gray-500">
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
                       <span>{customer.phone}</span>
                       <span>구매 {customer.total_purchase_count}회</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                    <span className="font-bold text-gray-900">{formatCurrency(customer.total_purchase_amount)}</span>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                    <span className="font-bold text-foreground">{formatCurrency(customer.total_purchase_amount)}</span>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
                 </div>
               </Card>
@@ -401,32 +435,34 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">고객 등록</DialogTitle>
+            <p className="text-sm text-muted-foreground">고객 정보를 등록하면 매출 입력 시 자동으로 연결돼요.</p>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e); }} className="space-y-5 pt-2">
             <div className="space-y-2">
               <Label>고객명 *</Label>
-              <Input name="name" placeholder="홍길동" required className="bg-gray-50" />
+              <Input name="name" placeholder="홍길동" required className="bg-muted" />
             </div>
             <div className="space-y-2">
               <Label>연락처 *</Label>
-              <Input 
-                name="phone" 
+              <Input
+                name="phone"
                 value={phoneValue}
                 onChange={(e) => handlePhoneChange(e.target.value)}
-                placeholder="010-0000-0000" 
-                required 
-                className={cn("bg-gray-50", phoneDuplicate && "border-red-500 focus-visible:ring-red-500")}
+                placeholder="010-0000-0000"
+                required
+                className={cn("bg-muted", phoneDuplicate && "border-red-500 focus-visible:ring-red-500")}
               />
               {phoneDuplicate && (
-                <p className="text-xs text-red-500">
+                <p className="text-xs text-destructive">
                   이미 등록된 연락처입니다 ({phoneDuplicate.name})
                 </p>
               )}
+              <p className="text-[11px] text-muted-foreground">같은 연락처의 고객은 중복 등록할 수 없어요</p>
             </div>
             <div className="space-y-2">
               <Label>등급</Label>
               <Select name="grade" defaultValue="new">
-                <SelectTrigger className="bg-gray-50">
+                <SelectTrigger className="bg-muted">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -436,11 +472,12 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                   <SelectItem value="blacklist">⚠️ 블랙리스트</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground">신규: 첫 방문 / 단골: 자주 오는 고객 / VIP: 최우수 고객</p>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label>메모</Label>
-                <span className={cn("text-xs", noteValue.length > 200 ? "text-red-500" : "text-gray-400")}>
+                <span className={cn("text-xs", noteValue.length > 200 ? "text-destructive" : "text-muted-foreground")}>
                   {noteValue.length}/200
                 </span>
               </div>
@@ -449,13 +486,13 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                 value={noteValue}
                 onChange={(e) => setNoteValue(e.target.value.slice(0, 200))}
                 placeholder="고객에 대한 메모를 입력하세요"
-                className="bg-gray-50 min-h-[80px] resize-none"
+                className="bg-muted min-h-[80px] resize-none"
                 maxLength={200}
               />
             </div>
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>취소</Button>
-              <Button type="submit" disabled={isSubmitting || !!phoneDuplicate || phoneValue.length < 13} className="bg-rose-500 hover:bg-rose-600">
+              <Button type="submit" disabled={isSubmitting || !!phoneDuplicate || phoneValue.length < 13}>
                 {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {isSubmitting ? '저장 중...' : '저장'}
               </Button>
@@ -473,43 +510,43 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
           {selectedCustomer && (
             <div className="space-y-4 pt-2">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Users className="w-6 h-6 text-gray-500" />
+                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                  <Users className="w-6 h-6 text-muted-foreground" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-lg text-gray-900">{selectedCustomer.name}</span>
+                    <span className="font-bold text-lg text-foreground">{selectedCustomer.name}</span>
                     <span className={`px-2 py-0.5 text-xs font-medium rounded ${gradeLabels[selectedCustomer.grade].bg} ${gradeLabels[selectedCustomer.grade].color}`}>
                       {gradeLabels[selectedCustomer.grade].icon} {gradeLabels[selectedCustomer.grade].label}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 text-gray-500 text-sm">
+                  <div className="flex items-center gap-1 text-muted-foreground text-sm">
                     <Phone className="w-3 h-3" />
                     <span>{selectedCustomer.phone}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
                 <div className="text-center">
-                  <p className="text-sm text-gray-500">구매횟수</p>
-                  <p className="text-xl font-bold text-gray-900">{selectedCustomer.total_purchase_count}회</p>
+                  <p className="text-sm text-muted-foreground">구매 횟수</p>
+                  <p className="text-xl font-bold text-foreground">{selectedCustomer.total_purchase_count}회</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-500">총구매액</p>
-                  <p className="text-xl font-bold text-rose-600">{formatCurrency(selectedCustomer.total_purchase_amount)}</p>
+                  <p className="text-sm text-muted-foreground">총 구매액</p>
+                  <p className="text-xl font-bold text-brand">{formatCurrency(selectedCustomer.total_purchase_amount)}</p>
                 </div>
               </div>
 
               {selectedCustomer.first_purchase_date && (
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-500">첫 구매</p>
+                    <p className="text-muted-foreground">첫 구매</p>
                     <p className="font-medium">{format(new Date(selectedCustomer.first_purchase_date), 'yyyy.M.d', { locale: ko })}</p>
                   </div>
                   {selectedCustomer.last_purchase_date && (
                     <div>
-                      <p className="text-gray-500">최근 구매</p>
+                      <p className="text-muted-foreground">최근 구매</p>
                       <p className="font-medium">{format(new Date(selectedCustomer.last_purchase_date), 'yyyy.M.d', { locale: ko })}</p>
                     </div>
                   )}
@@ -518,31 +555,31 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
 
               {selectedCustomer.note && (
                 <div className="space-y-1 pt-2 border-t">
-                  <p className="text-sm text-gray-500">메모</p>
-                  <p className="text-gray-700">{selectedCustomer.note}</p>
+                  <p className="text-sm text-muted-foreground">메모</p>
+                  <p className="text-foreground">{selectedCustomer.note}</p>
                 </div>
               )}
 
               {/* 구매 이력 */}
               <div className="space-y-2 pt-2 border-t">
                 <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-4 h-4 text-gray-500" />
-                  <p className="text-sm font-medium text-gray-700">구매 이력</p>
+                  <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-sm font-medium text-foreground">구매 이력</p>
                 </div>
                 {isLoadingSales ? (
-                  <p className="text-sm text-gray-500 py-2">로딩 중...</p>
+                  <p className="text-sm text-muted-foreground py-2">로딩 중...</p>
                 ) : customerSales.length > 0 ? (
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {customerSales.slice(0, 5).map((sale) => (
                       <div
                         key={sale.id}
-                        className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded"
+                        className="flex justify-between items-center text-sm p-2 bg-muted rounded"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-500">{format(new Date(sale.date), 'M/d', { locale: ko })}</span>
-                          <span 
+                          <span className="text-muted-foreground">{format(new Date(sale.date), 'M/d', { locale: ko })}</span>
+                          <span
                             className="px-1.5 py-0.5 text-xs font-medium rounded"
-                            style={{ 
+                            style={{
                               backgroundColor: categoryColors[sale.product_category] ? `${categoryColors[sale.product_category]}40` : '#f3f4f6',
                               color: categoryColors[sale.product_category] || '#374151'
                             }}
@@ -554,7 +591,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                           <span className="font-medium">{formatCurrency(sale.amount)}</span>
                           <button
                             type="button"
-                            className="text-rose-500 hover:text-rose-600 p-1"
+                            className="text-brand hover:text-brand p-1"
                             onClick={() => {
                               const saleDate = new Date(sale.date);
                               const year = saleDate.getFullYear();
@@ -569,23 +606,39 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                       </div>
                     ))}
                     {customerSales.length > 5 && (
-                      <p className="text-xs text-gray-400 text-center">외 {customerSales.length - 5}건</p>
+                      <p className="text-xs text-muted-foreground text-center">외 {customerSales.length - 5}건</p>
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 py-2">구매 이력이 없습니다</p>
+                  <p className="text-sm text-muted-foreground py-2">구매 이력이 없습니다</p>
                 )}
               </div>
 
               <div className="flex justify-between pt-4 border-t">
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const params = new URLSearchParams({
+                        action: 'create',
+                        customer_name: selectedCustomer.name,
+                        customer_phone: selectedCustomer.phone,
+                        customer_id: selectedCustomer.id,
+                      });
+                      router.push(`/sales?${params.toString()}`);
+                      setSelectedCustomer(null);
+                    }}
+                  >
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    매출 등록
+                  </Button>
                   <Button variant="outline" onClick={() => handleEdit(selectedCustomer)}>
                     <Pencil className="w-4 h-4 mr-2" />
                     수정
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                  <Button
+                    variant="outline"
+                    className="text-destructive hover:text-destructive hover:bg-red-50"
                     onClick={() => {
                       handleDelete(selectedCustomer);
                     }}
@@ -614,19 +667,19 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
             <form onSubmit={(e) => { e.preventDefault(); handleUpdate(e); }} className="space-y-5 pt-2">
               <div className="space-y-2">
                 <Label>고객명 *</Label>
-                <Input name="name" defaultValue={editingCustomer.name} required className="bg-gray-50" />
+                <Input name="name" defaultValue={editingCustomer.name} required className="bg-muted" />
               </div>
               <div className="space-y-2">
                 <Label>연락처 *</Label>
-                <Input 
-                  name="phone" 
+                <Input
+                  name="phone"
                   value={editPhoneValue}
                   onChange={(e) => handleEditPhoneChange(e.target.value)}
-                  required 
-                  className={cn("bg-gray-50", editPhoneDuplicate && "border-red-500 focus-visible:ring-red-500")}
+                  required
+                  className={cn("bg-muted", editPhoneDuplicate && "border-red-500 focus-visible:ring-red-500")}
                 />
                 {editPhoneDuplicate && (
-                  <p className="text-xs text-red-500">
+                  <p className="text-xs text-destructive">
                     이미 등록된 연락처입니다 ({editPhoneDuplicate.name})
                   </p>
                 )}
@@ -634,7 +687,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
               <div className="space-y-2">
                 <Label>등급</Label>
                 <Select name="grade" defaultValue={editingCustomer.grade}>
-                  <SelectTrigger className="bg-gray-50">
+                  <SelectTrigger className="bg-muted">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -648,7 +701,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>메모</Label>
-                  <span className={cn("text-xs", editNoteValue.length > 200 ? "text-red-500" : "text-gray-400")}>
+                  <span className={cn("text-xs", editNoteValue.length > 200 ? "text-destructive" : "text-muted-foreground")}>
                     {editNoteValue.length}/200
                   </span>
                 </div>
@@ -657,13 +710,13 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                   value={editNoteValue}
                   onChange={(e) => setEditNoteValue(e.target.value.slice(0, 200))}
                   placeholder="고객에 대한 메모를 입력하세요"
-                  className="bg-gray-50 min-h-[80px] resize-none"
+                  className="bg-muted min-h-[80px] resize-none"
                   maxLength={200}
                 />
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setEditingCustomer(null)}>취소</Button>
-                <Button type="submit" disabled={isSubmitting || !!editPhoneDuplicate || editPhoneValue.length < 13} className="bg-rose-500 hover:bg-rose-600">
+                <Button type="submit" disabled={isSubmitting || !!editPhoneDuplicate || editPhoneValue.length < 13}>
                   {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {isSubmitting ? '저장 중...' : '저장'}
                 </Button>
@@ -680,20 +733,22 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
             <DialogTitle>고객 삭제</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-gray-600 text-sm">
-              <span className="font-medium text-gray-900">{deleteTarget?.name}</span> 고객을 삭제하시겠습니까?
+            <p className="text-muted-foreground text-sm">
+              <span className="font-medium text-foreground">{deleteTarget?.name}</span> 고객을 삭제하시겠습니까?
             </p>
-            <p className="text-gray-500 text-xs mt-2">연결된 매출 기록은 유지됩니다.</p>
+            <p className="text-muted-foreground text-xs mt-2">연결된 매출 기록은 유지됩니다.</p>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
               취소
             </Button>
-            <Button 
-              className="bg-red-500 hover:bg-red-600"
+            <Button
+              variant="destructive"
               onClick={confirmDelete}
+              disabled={isDeleting}
             >
-              삭제
+              {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {isDeleting ? '삭제 중...' : '삭제'}
             </Button>
           </div>
         </DialogContent>

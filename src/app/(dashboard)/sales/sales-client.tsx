@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -51,6 +51,7 @@ interface Props {
 
 export function SalesClient({ initialSales, currentYear, currentMonth, initialCategories, initialPayments, initialCardCompanies, initialSelectedSale }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(initialSelectedSale || null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
@@ -69,7 +70,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
   const [cardCompanies, setCardCompanies] = useState<CardCompanySetting[]>(initialCardCompanies);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(initialPayments[0]?.value || 'card');
   const [editPaymentMethod, setEditPaymentMethod] = useState<string>('');
-  
+
   // 고객 자동완성 상태
   const [customerName, setCustomerName] = useState('');
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -78,15 +79,16 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
   const [editCustomerId, setEditCustomerId] = useState<string | null>(null);
   const [editCustomerPhone, setEditCustomerPhone] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Sale | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 카테고리/결제방식 라벨 및 색상 맵 생성 (value -> label/color)
-  const categoryLabels = useMemo(() => 
+  const categoryLabels = useMemo(() =>
     Object.fromEntries(categories.map(c => [c.value, c.label])), [categories]);
-  const categoryColors = useMemo(() => 
+  const categoryColors = useMemo(() =>
     Object.fromEntries(categories.map(c => [c.value, c.color])), [categories]);
-  const paymentLabels = useMemo(() => 
+  const paymentLabels = useMemo(() =>
     Object.fromEntries(payments.map(p => [p.value, p.label])), [payments]);
-  const paymentColors = useMemo(() => 
+  const paymentColors = useMemo(() =>
     Object.fromEntries(payments.map(p => [p.value, p.color])), [payments]);
 
   // 설정 새로고침
@@ -97,31 +99,49 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
     setCardCompanies(cards);
   };
 
+  // URL 파라미터로 등록 모달 자동 오픈 (고객 페이지에서 연결)
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create') {
+      const paramCustomerName = searchParams.get('customer_name');
+      const paramCustomerPhone = searchParams.get('customer_phone');
+      const paramCustomerId = searchParams.get('customer_id');
+
+      if (paramCustomerName) setCustomerName(paramCustomerName);
+      if (paramCustomerPhone) setCustomerPhone(paramCustomerPhone);
+      if (paramCustomerId) setCustomerId(paramCustomerId);
+
+      setIsFormOpen(true);
+      // URL 파라미터 정리
+      router.replace(`/sales?year=${currentYear}&month=${currentMonth}`, { scroll: false });
+    }
+  }, [searchParams, router, currentYear, currentMonth]);
+
   const filteredSales = useMemo(() => {
     let result = initialSales;
-    
+
     // Payment filter
     if (paymentFilter !== 'all') {
       result = result.filter(s => s.payment_method === paymentFilter);
     }
-    
+
     // Category filter
     if (categoryFilter !== 'all') {
       result = result.filter(s => s.product_category === categoryFilter);
     }
-    
+
     // Search filter
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(s => 
-        (s.product_category || s.product_name || '').toLowerCase().includes(q) || 
+      result = result.filter(s =>
+        (s.product_category || s.product_name || '').toLowerCase().includes(q) ||
         s.customer_name?.toLowerCase().includes(q)
       );
     }
-    
+
     return result;
   }, [initialSales, paymentFilter, categoryFilter, searchQuery]);
-  
+
   const summary = useMemo(() => calculateSalesSummary(filteredSales), [filteredSales]);
 
   // 매출 상세 선택 시 사진 로드
@@ -146,11 +166,11 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
     try {
       const formData = new FormData(e.currentTarget);
       const sale = await createSale(formData);
-      
+
       setIsFormOpen(false);
       router.refresh();
       toast.success('매출이 등록되었습니다');
-      
+
       // 등록 후 사진 추가 여부 묻기
       setShowPhotoPrompt(sale);
     } catch (error) {
@@ -168,7 +188,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
     try {
       const formData = new FormData(e.currentTarget);
       await updateSale(editingSale.id, formData);
-      
+
       setEditingSale(null);
       setSelectedSale(null);
       router.refresh();
@@ -206,6 +226,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
       await deleteSale(deleteTarget.id);
       setDeleteTarget(null);
@@ -215,6 +236,8 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
     } catch (error) {
       console.error('Failed to delete sale:', error);
       toast.error('매출 삭제에 실패했습니다');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -223,78 +246,78 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">매출 관리</h1>
-          <p className="text-gray-500 mt-1">매출 내역을 등록하고 관리하세요</p>
+          <h1 className="text-xl font-semibold text-foreground tracking-tight">매출 관리</h1>
+          <p className="text-sm text-muted-foreground mt-1">매출 내역을 등록하고 관리하세요</p>
         </div>
-        <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setSelectedPaymentMethod(payments[0]?.value || 'card'); setCustomerName(''); setCustomerId(null); setCustomerPhone(null); }} className="bg-rose-500 hover:bg-rose-600">
+        <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setSelectedPaymentMethod(payments[0]?.value || 'card'); setCustomerName(''); setCustomerId(null); setCustomerPhone(null); }}>
           <Plus className="w-4 h-4 mr-2" />
           매출 등록
         </Button>
       </div>
 
       {/* Summary Cards - Responsive Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        <Card className="border-0 shadow-sm bg-gradient-to-br from-rose-50 to-white col-span-2 sm:col-span-1">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-rose-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-rose-600" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <Card className="col-span-2 sm:col-span-1">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-gray-500">총 매출</p>
-                <p className="text-base sm:text-xl font-bold text-gray-900 truncate">{formatCurrency(summary.total)}</p>
+                <p className="text-xs text-muted-foreground">총 매출</p>
+                <p className="text-lg font-bold text-foreground truncate">{formatCurrency(summary.total)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-gray-500">카드</p>
-                <p className="text-base sm:text-xl font-bold text-gray-900 truncate">{formatCurrency(summary.card)}</p>
+                <p className="text-xs text-muted-foreground">카드</p>
+                <p className="text-lg font-bold text-foreground truncate">{formatCurrency(summary.card)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                <Wallet className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-gray-500">네이버페이</p>
-                <p className="text-base sm:text-xl font-bold text-gray-900 truncate">{formatCurrency(summary.naverpay)}</p>
+                <p className="text-xs text-muted-foreground">네이버페이</p>
+                <p className="text-lg font-bold text-foreground truncate">{formatCurrency(summary.naverpay)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-gray-500">계좌이체</p>
-                <p className="text-base sm:text-xl font-bold text-gray-900 truncate">{formatCurrency(summary.transfer)}</p>
+                <p className="text-xs text-muted-foreground">계좌이체</p>
+                <p className="text-lg font-bold text-foreground truncate">{formatCurrency(summary.transfer)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Banknote className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                <Banknote className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-gray-500">현금</p>
-                <p className="text-base sm:text-xl font-bold text-gray-900 truncate">{formatCurrency(summary.cash)}</p>
+                <p className="text-xs text-muted-foreground">현금</p>
+                <p className="text-lg font-bold text-foreground truncate">{formatCurrency(summary.cash)}</p>
               </div>
             </div>
           </CardContent>
@@ -303,9 +326,9 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
 
 
       {/* Filters */}
-      <div className="flex gap-2 sm:gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap">
         <Select value={currentYear.toString()} onValueChange={handleYearChange}>
-          <SelectTrigger className="w-[100px] bg-white border-gray-200">
+          <SelectTrigger className="w-[100px] bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -315,7 +338,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
           </SelectContent>
         </Select>
         <Select value={currentMonth.toString()} onValueChange={handleMonthChange}>
-          <SelectTrigger className="w-[80px] bg-white border-gray-200">
+          <SelectTrigger className="w-[80px] bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -325,13 +348,13 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
           </SelectContent>
         </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-auto min-w-[140px] bg-white border-gray-200">
+          <SelectTrigger className="w-auto min-w-[140px] bg-background">
             <div className="flex items-center gap-1.5">
-              <span className="text-gray-400 text-xs">카테고리</span>
+              <span className="text-muted-foreground text-xs">카테고리</span>
               {categoryFilter === 'all' ? (
                 <span>전체</span>
               ) : (
-                <span 
+                <span
                   className="px-1.5 py-0.5 text-xs font-medium rounded"
                   style={{ backgroundColor: `${categoryColors[categoryFilter]}40`, color: categoryColors[categoryFilter] }}
                 >
@@ -344,7 +367,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
             <SelectItem value="all">전체</SelectItem>
             {categories.map(cat => (
               <SelectItem key={cat.id} value={cat.value}>
-                <span 
+                <span
                   className="px-1.5 py-0.5 text-xs font-medium rounded"
                   style={{ backgroundColor: `${cat.color}40`, color: cat.color }}
                 >
@@ -355,13 +378,13 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
           </SelectContent>
         </Select>
         <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-          <SelectTrigger className="w-auto min-w-[120px] bg-white border-gray-200">
+          <SelectTrigger className="w-auto min-w-[120px] bg-background">
             <div className="flex items-center gap-1.5">
-              <span className="text-gray-400 text-xs">결제</span>
+              <span className="text-muted-foreground text-xs">결제</span>
               {paymentFilter === 'all' ? (
                 <span>전체</span>
               ) : (
-                <span 
+                <span
                   className="px-1.5 py-0.5 text-xs font-medium rounded"
                   style={{ backgroundColor: `${paymentColors[paymentFilter]}40`, color: paymentColors[paymentFilter] }}
                 >
@@ -374,7 +397,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
             <SelectItem value="all">전체</SelectItem>
             {payments.map(pm => (
               <SelectItem key={pm.id} value={pm.value}>
-                <span 
+                <span
                   className="px-1.5 py-0.5 text-xs font-medium rounded"
                   style={{ backgroundColor: `${pm.color}40`, color: pm.color }}
                 >
@@ -391,63 +414,75 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
           onClick={() => setIsSettingsOpen(true)}
           title="설정"
         >
-          <Settings className="w-4 h-4 text-gray-500" />
+          <Settings className="w-4 h-4 text-muted-foreground" />
         </Button>
         <div className="relative flex-1 min-w-[150px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-white border-gray-200"
+            className="pl-9 bg-background"
           />
         </div>
       </div>
 
       {/* Desktop Table */}
-      <Card className="border-0 shadow-sm overflow-hidden hidden md:block">
+      <Card className="overflow-hidden hidden md:block">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50/80">
-                <TableHead className="font-semibold text-gray-700 w-[120px] pl-6">날짜</TableHead>
-                <TableHead className="font-semibold text-gray-700 w-[140px]">카테고리</TableHead>
-                <TableHead className="font-semibold text-gray-700 w-[120px]">금액</TableHead>
-                <TableHead className="font-semibold text-gray-700 w-[100px]">결제</TableHead>
-                <TableHead className="font-semibold text-gray-700 w-[100px] hidden lg:table-cell">예약</TableHead>
-                <TableHead className="font-semibold text-gray-700 w-[100px] hidden lg:table-cell">고객</TableHead>
-                <TableHead className="font-semibold text-gray-700 hidden xl:table-cell">비고</TableHead>
+              <TableRow className="bg-muted/40">
+                <TableHead className="w-[120px] pl-6">날짜</TableHead>
+                <TableHead className="w-[140px]">카테고리</TableHead>
+                <TableHead className="w-[120px]">금액</TableHead>
+                <TableHead className="w-[100px]">결제</TableHead>
+                <TableHead className="w-[100px] hidden lg:table-cell">예약</TableHead>
+                <TableHead className="w-[100px] hidden lg:table-cell">고객</TableHead>
+                <TableHead className="hidden xl:table-cell">비고</TableHead>
                 <TableHead className="w-[130px] text-right pr-6"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredSales.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-16 text-gray-500">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                        <TrendingUp className="w-6 h-6 text-gray-400" />
+                  <TableCell colSpan={8} className="text-center py-16 text-muted-foreground">
+                    {(paymentFilter !== 'all' || categoryFilter !== 'all' || searchQuery) ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                          <Search className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                        <p>선택한 필터에 맞는 매출이 없습니다</p>
+                        <Button variant="outline" size="sm" onClick={() => { setPaymentFilter('all'); setCategoryFilter('all'); setSearchQuery(''); }}>
+                          필터 초기화
+                        </Button>
                       </div>
-                      <p>등록된 매출이 없습니다</p>
-                      <Button variant="outline" size="sm" onClick={() => { setIsFormOpen(true); setNoteValue(''); }}>
-                        첫 매출 등록하기
-                      </Button>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                          <TrendingUp className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                        <p>등록된 매출이 없습니다</p>
+                        <Button variant="outline" size="sm" onClick={() => { setIsFormOpen(true); setNoteValue(''); }}>
+                          첫 매출 등록하기
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredSales.map((sale) => (
-                  <TableRow 
-                    key={sale.id} 
-                    className="cursor-pointer hover:bg-gray-50/50 transition-colors"
+                  <TableRow
+                    key={sale.id}
+                    className="cursor-pointer hover:bg-muted/30 transition-colors"
                     onClick={() => handleSelectSale(sale)}
                   >
-                    <TableCell className="text-gray-600 pl-6">{format(new Date(sale.date), 'M/d (E)', { locale: ko })}</TableCell>
+                    <TableCell className="text-muted-foreground pl-6">{format(new Date(sale.date), 'M/d (E)', { locale: ko })}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span 
+                        <span
                           className="px-2 py-1 text-xs font-medium rounded-md"
-                          style={{ 
+                          style={{
                             backgroundColor: categoryColors[sale.product_category] ? `${categoryColors[sale.product_category]}40` : '#f3f4f6',
                             color: categoryColors[sale.product_category] || '#374151'
                           }}
@@ -455,15 +490,15 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                           {categoryLabels[sale.product_category] || sale.product_category || sale.product_name}
                         </span>
                         {sale.photos && sale.photos.length > 0 && (
-                          <ImageIcon className="w-4 h-4 text-gray-400" />
+                          <ImageIcon className="w-4 h-4 text-muted-foreground" />
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="font-semibold text-gray-900">{formatCurrency(sale.amount)}</TableCell>
+                    <TableCell className="font-semibold text-foreground">{formatCurrency(sale.amount)}</TableCell>
                     <TableCell>
-                      <span 
+                      <span
                         className="px-2 py-1 text-xs font-medium rounded-md"
-                        style={{ 
+                        style={{
                           backgroundColor: paymentColors[sale.payment_method] ? `${paymentColors[sale.payment_method]}40` : '#f3f4f6',
                           color: paymentColors[sale.payment_method] || '#374151'
                         }}
@@ -471,17 +506,17 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                         {paymentLabels[sale.payment_method] || sale.payment_method}
                       </span>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-gray-600 truncate">{channelLabels[sale.reservation_channel]}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-gray-600 truncate">{sale.customer_name || '-'}</TableCell>
-                    <TableCell className="hidden xl:table-cell text-gray-500 text-sm truncate" title={sale.note || ''}>
+                    <TableCell className="hidden lg:table-cell text-muted-foreground truncate">{channelLabels[sale.reservation_channel]}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-muted-foreground truncate">{sale.customer_name || '-'}</TableCell>
+                    <TableCell className="hidden xl:table-cell text-muted-foreground text-sm truncate" title={sale.note || ''}>
                       {sale.note || '-'}
                     </TableCell>
                     <TableCell className="text-right pr-6">
                       <div className="flex gap-1 justify-end">
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-gray-400 hover:text-rose-500"
+                          className="h-8 w-8 text-muted-foreground hover:text-brand"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleOpenPhotoModal(sale);
@@ -490,10 +525,10 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                         >
                           <ImageIcon className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-gray-400 hover:text-blue-500"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEdit(sale);
@@ -501,10 +536,10 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-gray-400 hover:text-red-500"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDelete(sale);
@@ -526,27 +561,37 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
       {/* Mobile Card List */}
       <div className="md:hidden space-y-3">
         {filteredSales.length === 0 ? (
-          <Card className="border-0 shadow-sm p-8 text-center">
-            <div className="flex flex-col items-center gap-2 text-gray-500">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-gray-400" />
+          <Card className="p-8 text-center">
+            {(paymentFilter !== 'all' || categoryFilter !== 'all' || searchQuery) ? (
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <Search className="w-8 h-8 text-muted-foreground opacity-40" />
+                <p className="text-sm">선택한 필터에 맞는 매출이 없습니다</p>
+                <Button variant="outline" size="sm" onClick={() => { setPaymentFilter('all'); setCategoryFilter('all'); setSearchQuery(''); }}>
+                  필터 초기화
+                </Button>
               </div>
-              <p>등록된 매출이 없습니다</p>
-            </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <p>등록된 매출이 없습니다</p>
+              </div>
+            )}
           </Card>
         ) : (
           filteredSales.map((sale) => (
-            <Card 
+            <Card
               key={sale.id}
-              className="border-0 shadow-sm p-4 cursor-pointer hover:shadow-md active:bg-gray-50 transition-all"
+              className="p-4 cursor-pointer hover:bg-muted/30 active:bg-muted transition-all"
               onClick={() => handleSelectSale(sale)}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <span 
+                    <span
                       className="px-2 py-0.5 text-xs font-medium rounded flex-shrink-0"
-                      style={{ 
+                      style={{
                         backgroundColor: categoryColors[sale.product_category] ? `${categoryColors[sale.product_category]}40` : '#f3f4f6',
                         color: categoryColors[sale.product_category] || '#374151'
                       }}
@@ -554,14 +599,14 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                       {categoryLabels[sale.product_category] || sale.product_category || sale.product_name}
                     </span>
                     {sale.photos && sale.photos.length > 0 && (
-                      <ImageIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <ImageIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-sm flex-wrap">
-                    <span className="text-gray-500 flex-shrink-0">{format(new Date(sale.date), 'M/d')}</span>
-                    <span 
+                    <span className="text-muted-foreground flex-shrink-0">{format(new Date(sale.date), 'M/d')}</span>
+                    <span
                       className="px-2 py-0.5 text-xs font-medium rounded flex-shrink-0"
-                      style={{ 
+                      style={{
                         backgroundColor: paymentColors[sale.payment_method] ? `${paymentColors[sale.payment_method]}40` : '#f3f4f6',
                         color: paymentColors[sale.payment_method] || '#374151'
                       }}
@@ -569,13 +614,13 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                       {paymentLabels[sale.payment_method] || sale.payment_method}
                     </span>
                     {sale.customer_name && (
-                      <span className="text-gray-500 truncate max-w-[80px]">{sale.customer_name}</span>
+                      <span className="text-muted-foreground truncate max-w-[80px]">{sale.customer_name}</span>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="font-bold text-gray-900 whitespace-nowrap">{formatCurrency(sale.amount)}</span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                  <span className="font-bold text-foreground whitespace-nowrap">{formatCurrency(sale.amount)}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </div>
               </div>
             </Card>
@@ -588,22 +633,23 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">매출 등록</DialogTitle>
+            <p className="text-sm text-muted-foreground">오늘 판매한 내역을 입력해주세요. * 표시는 필수 항목이에요.</p>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e); }} className="space-y-5 pt-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>날짜 *</Label>
-                <Input type="date" name="date" defaultValue={format(new Date(), 'yyyy-MM-dd')} required className="bg-gray-50" />
+                <Input type="date" name="date" defaultValue={format(new Date(), 'yyyy-MM-dd')} required className="bg-muted" />
               </div>
               <div className="space-y-2">
                 <Label>금액 *</Label>
-                <AmountInput name="amount" placeholder="0" required className="bg-gray-50" />
+                <AmountInput name="amount" placeholder="0" required className="bg-muted" />
               </div>
             </div>
             <div className="space-y-2">
               <Label>상품 카테고리 *</Label>
               <Select name="product_category" required>
-                <SelectTrigger className="bg-gray-50">
+                <SelectTrigger className="bg-muted">
                   <SelectValue placeholder="카테고리 선택" />
                 </SelectTrigger>
                 <SelectContent>
@@ -616,22 +662,31 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>결제방식 *</Label>
-                <Select name="payment_method" value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
-                  <SelectTrigger className="bg-gray-50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {payments.map(pm => (
-                      <SelectItem key={pm.id} value={pm.value}>{pm.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <input type="hidden" name="payment_method" value={selectedPaymentMethod} />
+                <div className="flex flex-wrap gap-2">
+                  {payments.map(pm => (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
+                        selectedPaymentMethod === pm.value
+                          ? "ring-2 ring-offset-1 ring-brand/50"
+                          : "border-border text-muted-foreground hover:border-foreground/30"
+                      )}
+                      style={selectedPaymentMethod === pm.value ? { backgroundColor: `${pm.color}20`, color: pm.color, borderColor: pm.color } : {}}
+                      onClick={() => setSelectedPaymentMethod(pm.value)}
+                    >
+                      {pm.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               {selectedPaymentMethod === 'card' ? (
                 <div className="space-y-2">
                   <Label>카드사 *</Label>
                   <Select name="card_company" required>
-                    <SelectTrigger className="bg-gray-50">
+                    <SelectTrigger className="bg-muted">
                       <SelectValue placeholder="카드사 선택" />
                     </SelectTrigger>
                     <SelectContent>
@@ -640,12 +695,13 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground">카드사별 수수료가 자동 계산돼요</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <Label>예약방식</Label>
                   <Select name="reservation_channel" defaultValue="naver_booking">
-                    <SelectTrigger className="bg-gray-50">
+                    <SelectTrigger className="bg-muted">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -663,7 +719,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
               <div className="space-y-2">
                 <Label>예약방식</Label>
                 <Select name="reservation_channel" defaultValue="naver_booking">
-                  <SelectTrigger className="bg-gray-50">
+                  <SelectTrigger className="bg-muted">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -688,22 +744,23 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                   }}
                   placeholder="고객명 검색 또는 입력"
                 />
+                <p className="text-[11px] text-muted-foreground">이름을 입력하면 기존 고객이 자동 검색돼요</p>
               </div>
               <div className="space-y-2">
                 <Label>연락처</Label>
-                <Input 
-                  name="customer_phone" 
-                  value={customerPhone || ''} 
+                <Input
+                  name="customer_phone"
+                  value={customerPhone || ''}
                   onChange={(e) => setCustomerPhone(formatPhoneNumber(e.target.value))}
-                  placeholder="010-0000-0000" 
-                  className="bg-gray-50" 
+                  placeholder="010-0000-0000"
+                  className="bg-muted"
                 />
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label>비고</Label>
-                <span className={cn("text-xs", noteValue.length > 100 ? "text-red-500" : "text-gray-400")}>
+                <span className={cn("text-xs", noteValue.length > 100 ? "text-destructive" : "text-muted-foreground")}>
                   {noteValue.length}/100
                 </span>
               </div>
@@ -712,13 +769,13 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                 value={noteValue}
                 onChange={(e) => setNoteValue(e.target.value.slice(0, 100))}
                 placeholder="추가 정보를 입력하세요"
-                className="bg-gray-50 min-h-[60px] resize-none"
+                className="bg-muted min-h-[60px] resize-none"
                 maxLength={100}
               />
             </div>
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>취소</Button>
-              <Button type="submit" disabled={isSubmitting} className="bg-rose-500 hover:bg-rose-600">
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {isSubmitting ? '저장 중...' : '저장'}
               </Button>
@@ -738,18 +795,18 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
             <div className="space-y-4 pt-2">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">날짜</p>
+                  <p className="text-sm text-muted-foreground">날짜</p>
                   <p className="font-medium">{format(new Date(selectedSale.date), 'yyyy년 M월 d일', { locale: ko })}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">금액</p>
-                  <p className="font-bold text-lg text-rose-600">{formatCurrency(selectedSale.amount)}</p>
+                  <p className="text-sm text-muted-foreground">금액</p>
+                  <p className="font-bold text-lg text-brand">{formatCurrency(selectedSale.amount)}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">카테고리</p>
-                  <span 
+                  <p className="text-sm text-muted-foreground">카테고리</p>
+                  <span
                     className="inline-block px-2 py-1 text-xs font-medium rounded-md"
-                    style={{ 
+                    style={{
                       backgroundColor: categoryColors[selectedSale.product_category] ? `${categoryColors[selectedSale.product_category]}40` : '#f3f4f6',
                       color: categoryColors[selectedSale.product_category] || '#374151'
                     }}
@@ -758,10 +815,10 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">결제방식</p>
-                  <span 
+                  <p className="text-sm text-muted-foreground">결제방식</p>
+                  <span
                     className="inline-block px-2 py-1 text-xs font-medium rounded-md"
-                    style={{ 
+                    style={{
                       backgroundColor: paymentColors[selectedSale.payment_method] ? `${paymentColors[selectedSale.payment_method]}40` : '#f3f4f6',
                       color: paymentColors[selectedSale.payment_method] || '#374151'
                     }}
@@ -770,34 +827,34 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">예약방식</p>
+                  <p className="text-sm text-muted-foreground">예약방식</p>
                   <p className="font-medium">{channelLabels[selectedSale.reservation_channel]}</p>
                 </div>
                 {selectedSale.customer_name && (
                   <div className="space-y-1">
-                    <p className="text-sm text-gray-500">고객명</p>
+                    <p className="text-sm text-muted-foreground">고객명</p>
                     <p className="font-medium">{selectedSale.customer_name}</p>
                   </div>
                 )}
               </div>
-              
+
               {selectedSale.customer_phone && (
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">연락처</p>
+                  <p className="text-sm text-muted-foreground">연락처</p>
                   <p className="font-medium">{selectedSale.customer_phone}</p>
                 </div>
               )}
-              
+
               {selectedSale.note && (
                 <div className="space-y-1 pt-2 border-t">
-                  <p className="text-sm text-gray-500">비고</p>
-                  <p className="text-gray-700">{selectedSale.note}</p>
+                  <p className="text-sm text-muted-foreground">비고</p>
+                  <p className="text-foreground">{selectedSale.note}</p>
                 </div>
               )}
 
               {selectedSalePhotos && selectedSalePhotos.photos.length > 0 && (
                 <div className="space-y-2 pt-2 border-t">
-                  <p className="text-sm text-gray-500">사진</p>
+                  <p className="text-sm text-muted-foreground">사진</p>
                   <div className="grid grid-cols-3 gap-2">
                     {selectedSalePhotos.photos.slice(0, 6).map((photo, index) => (
                       <div key={photo.url} className="relative aspect-square">
@@ -819,7 +876,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
 
               <div className="flex justify-between pt-4 border-t">
                 <div className="flex gap-2">
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => {
                       handleOpenPhotoModal(selectedSale);
@@ -833,9 +890,9 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                     <Pencil className="w-4 h-4 mr-2" />
                     수정
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                  <Button
+                    variant="outline"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => {
                       handleDelete(selectedSale);
                     }}
@@ -864,17 +921,17 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>날짜 *</Label>
-                  <Input type="date" name="date" defaultValue={editingSale.date} required className="bg-gray-50" />
+                  <Input type="date" name="date" defaultValue={editingSale.date} required className="bg-muted" />
                 </div>
                 <div className="space-y-2">
                   <Label>금액 *</Label>
-                  <AmountInput name="amount" value={editingSale.amount} required className="bg-gray-50" />
+                  <AmountInput name="amount" value={editingSale.amount} required className="bg-muted" />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>상품 카테고리 *</Label>
                 <Select name="product_category" defaultValue={editingSale.product_category} key={`cat-${editingSale.id}`} required>
-                  <SelectTrigger className="bg-gray-50">
+                  <SelectTrigger className="bg-muted">
                     <SelectValue placeholder="카테고리 선택" />
                   </SelectTrigger>
                   <SelectContent>
@@ -887,22 +944,31 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>결제방식 *</Label>
-                  <Select name="payment_method" value={editPaymentMethod} onValueChange={setEditPaymentMethod} key={`pm-${editingSale.id}`}>
-                    <SelectTrigger className="bg-gray-50">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {payments.map(pm => (
-                        <SelectItem key={pm.id} value={pm.value}>{pm.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <input type="hidden" name="payment_method" value={editPaymentMethod} />
+                  <div className="flex flex-wrap gap-2">
+                    {payments.map(pm => (
+                      <button
+                        key={pm.id}
+                        type="button"
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
+                          editPaymentMethod === pm.value
+                            ? "ring-2 ring-offset-1 ring-brand/50"
+                            : "border-border text-muted-foreground hover:border-foreground/30"
+                        )}
+                        style={editPaymentMethod === pm.value ? { backgroundColor: `${pm.color}20`, color: pm.color, borderColor: pm.color } : {}}
+                        onClick={() => setEditPaymentMethod(pm.value)}
+                      >
+                        {pm.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {editPaymentMethod === 'card' ? (
                   <div className="space-y-2">
                     <Label>카드사 *</Label>
                     <Select name="card_company" defaultValue={editingSale.card_company || ''} key={`cc-${editingSale.id}`} required>
-                      <SelectTrigger className="bg-gray-50">
+                      <SelectTrigger className="bg-muted">
                         <SelectValue placeholder="카드사 선택" />
                       </SelectTrigger>
                       <SelectContent>
@@ -916,7 +982,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                   <div className="space-y-2">
                     <Label>예약방식</Label>
                     <Select name="reservation_channel" defaultValue={editingSale.reservation_channel} key={`ch-${editingSale.id}`}>
-                      <SelectTrigger className="bg-gray-50">
+                      <SelectTrigger className="bg-muted">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -934,7 +1000,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                 <div className="space-y-2">
                   <Label>예약방식</Label>
                   <Select name="reservation_channel" defaultValue={editingSale.reservation_channel} key={`ch2-${editingSale.id}`}>
-                    <SelectTrigger className="bg-gray-50">
+                    <SelectTrigger className="bg-muted">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -962,19 +1028,19 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                 </div>
                 <div className="space-y-2">
                   <Label>연락처</Label>
-                  <Input 
-                    name="customer_phone" 
-                    value={editCustomerPhone || ''} 
+                  <Input
+                    name="customer_phone"
+                    value={editCustomerPhone || ''}
                     onChange={(e) => setEditCustomerPhone(formatPhoneNumber(e.target.value))}
-                    placeholder="010-0000-0000" 
-                    className="bg-gray-50" 
+                    placeholder="010-0000-0000"
+                    className="bg-muted"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>비고</Label>
-                  <span className={cn("text-xs", editNoteValue.length > 100 ? "text-red-500" : "text-gray-400")}>
+                  <span className={cn("text-xs", editNoteValue.length > 100 ? "text-destructive" : "text-muted-foreground")}>
                     {editNoteValue.length}/100
                   </span>
                 </div>
@@ -983,13 +1049,13 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                   value={editNoteValue}
                   onChange={(e) => setEditNoteValue(e.target.value.slice(0, 100))}
                   placeholder="추가 정보를 입력하세요"
-                  className="bg-gray-50 min-h-[60px] resize-none"
+                  className="bg-muted min-h-[60px] resize-none"
                   maxLength={100}
                 />
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setEditingSale(null)}>취소</Button>
-                <Button type="submit" disabled={isSubmitting} className="bg-rose-500 hover:bg-rose-600">
+                <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {isSubmitting ? '저장 중...' : '저장'}
                 </Button>
@@ -1006,14 +1072,13 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
             <DialogTitle>사진 추가</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-gray-600 text-sm">매출이 등록되었습니다. 사진을 추가하시겠습니까?</p>
+            <p className="text-muted-foreground text-sm">매출이 등록되었습니다. 완성한 꽃 사진을 추가하면 사진첩에서도 볼 수 있어요.</p>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowPhotoPrompt(null)}>
               나중에
             </Button>
-            <Button 
-              className="bg-rose-500 hover:bg-rose-600"
+            <Button
               onClick={() => {
                 if (showPhotoPrompt) {
                   setPhotoModalSale(showPhotoPrompt);
@@ -1045,24 +1110,26 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
             <DialogTitle>매출 삭제</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-gray-600 text-sm">
+            <p className="text-muted-foreground text-sm">
               이 매출 기록을 삭제하시겠습니까?
             </p>
             {deleteTarget && (
-              <p className="text-gray-500 text-xs mt-2">
+              <p className="text-muted-foreground text-xs mt-2">
                 {format(new Date(deleteTarget.date), 'M월 d일', { locale: ko })} · {formatCurrency(deleteTarget.amount)}
               </p>
             )}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
               취소
             </Button>
-            <Button 
-              className="bg-red-500 hover:bg-red-600"
+            <Button
+              variant="destructive"
               onClick={confirmDelete}
+              disabled={isDeleting}
             >
-              삭제
+              {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {isDeleting ? '삭제 중...' : '삭제'}
             </Button>
           </div>
         </DialogContent>

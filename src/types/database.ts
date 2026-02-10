@@ -58,6 +58,7 @@ export interface Sale {
   note?: string;
   has_review: boolean;
   photos?: string[];
+  reservation_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -143,6 +144,31 @@ export interface PhotoCard {
   created_at: string;
   updated_at: string;
 }
+
+// Reservation Types
+export type ReservationStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+
+export interface Reservation {
+  id: string;
+  date: string;
+  time: string | null;
+  customer_name: string;
+  customer_phone: string | null;
+  title: string;
+  description: string | null;
+  status: ReservationStatus;
+  sale_id: string | null;
+  estimated_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const RESERVATION_STATUS = [
+  { value: 'pending', label: '대기', color: '#F5A623' },
+  { value: 'confirmed', label: '확정', color: '#5B8DEF' },
+  { value: 'completed', label: '완료', color: '#8B9D83' },
+  { value: 'cancelled', label: '취소', color: '#9B9B93' },
+] as const;
 
 export const PHOTO_TAG_COLORS = [
   { value: '#f5f5f5', label: '화이트' },

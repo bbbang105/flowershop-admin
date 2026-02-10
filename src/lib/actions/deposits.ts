@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth-guard';
 import type { Sale, DepositStatus } from '@/types/database';
 
 export interface DepositsFilter {
@@ -52,6 +53,7 @@ export async function getCompletedDeposits(month?: string): Promise<Sale[]> {
 
 
 export async function confirmDeposit(id: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -69,6 +71,7 @@ export async function confirmDeposit(id: string): Promise<void> {
 }
 
 export async function confirmMultipleDeposits(ids: string[]): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -86,6 +89,7 @@ export async function confirmMultipleDeposits(ids: string[]): Promise<void> {
 }
 
 export async function revertDeposit(id: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   const { error } = await supabase

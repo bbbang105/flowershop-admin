@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth-guard';
 import type { Expense } from '@/types/database';
 
 export async function getExpenses(month?: string) {
@@ -24,7 +25,20 @@ export async function getExpenses(month?: string) {
   return data as Expense[];
 }
 
+export async function getExpenseById(id: string): Promise<Expense | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('*')
+    .eq('id', id)
+    .single();
+  
+  if (error) return null;
+  return data as Expense;
+}
+
 export async function createExpense(formData: FormData) {
+  await requireAuth();
   const supabase = await createClient();
   
   const unitPrice = parseInt(formData.get('unit_price') as string);
@@ -51,6 +65,7 @@ export async function createExpense(formData: FormData) {
 }
 
 export async function updateExpense(id: string, formData: FormData) {
+  await requireAuth();
   const supabase = await createClient();
   
   const unitPrice = parseInt(formData.get('unit_price') as string);
@@ -76,6 +91,7 @@ export async function updateExpense(id: string, formData: FormData) {
 }
 
 export async function deleteExpense(id: string) {
+  await requireAuth();
   const supabase = await createClient();
   const { error } = await supabase.from('expenses').delete().eq('id', id);
   if (error) throw error;

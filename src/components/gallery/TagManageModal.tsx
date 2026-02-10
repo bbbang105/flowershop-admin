@@ -35,7 +35,7 @@ export function TagManageModal({ open, onClose, tags, onTagsChange, onTagSelect 
 
   const handleAdd = async () => {
     if (!newTagName.trim()) return;
-    
+
     const tagName = newTagName.trim();
     setIsAdding(true);
     try {
@@ -64,7 +64,7 @@ export function TagManageModal({ open, onClose, tags, onTagsChange, onTagSelect 
 
   const handleSaveEdit = async () => {
     if (!editingId || !editName.trim()) return;
-    
+
     setIsSaving(true);
     try {
       await updatePhotoTag(editingId, editName.trim(), editColor);
@@ -80,7 +80,7 @@ export function TagManageModal({ open, onClose, tags, onTagsChange, onTagSelect 
 
   const handleDelete = async () => {
     if (!deletingId) return;
-    
+
     setIsDeleting(true);
     try {
       await deletePhotoTag(deletingId);
@@ -122,7 +122,6 @@ export function TagManageModal({ open, onClose, tags, onTagsChange, onTagSelect 
               onClick={handleAdd}
               size="icon"
               disabled={isAdding}
-              className="bg-rose-500 hover:bg-rose-600"
             >
               {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             </Button>
@@ -131,12 +130,12 @@ export function TagManageModal({ open, onClose, tags, onTagsChange, onTagSelect 
           {/* 태그 목록 */}
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {tags.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">등록된 태그가 없습니다</p>
+              <p className="text-sm text-muted-foreground text-center py-4">등록된 태그가 없습니다</p>
             ) : (
               tags.map((tag) => (
                 <div
                   key={tag.id}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 hover:bg-gray-100"
+                  className="flex items-center gap-2 p-2 rounded-lg bg-muted hover:bg-muted/80"
                 >
                   {editingId === tag.id ? (
                     <>
@@ -172,7 +171,7 @@ export function TagManageModal({ open, onClose, tags, onTagsChange, onTagSelect 
                     </>
                   ) : deletingId === tag.id ? (
                     <div className="flex items-center gap-2 w-full">
-                      <span className="flex-1 text-sm text-red-600">삭제하시겠습니까?</span>
+                      <span className="flex-1 text-sm text-destructive">삭제하시겠습니까?</span>
                       <Button
                         size="sm"
                         variant="destructive"
@@ -204,7 +203,7 @@ export function TagManageModal({ open, onClose, tags, onTagsChange, onTagSelect 
                         className="h-8 w-8"
                         onClick={() => handleStartEdit(tag)}
                       >
-                        <Pencil className="w-4 h-4 text-gray-500" />
+                        <Pencil className="w-4 h-4 text-muted-foreground" />
                       </Button>
                       <Button
                         size="icon"
@@ -212,7 +211,7 @@ export function TagManageModal({ open, onClose, tags, onTagsChange, onTagSelect 
                         className="h-8 w-8"
                         onClick={() => setDeletingId(tag.id)}
                       >
-                        <X className="w-4 h-4 text-red-500" />
+                        <X className="w-4 h-4 text-destructive" />
                       </Button>
                     </>
                   )}

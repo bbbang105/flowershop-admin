@@ -2,9 +2,37 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth-guard';
+import { findOrCreateCustomer } from './customers';
 import type { Sale } from '@/types/database';
 
 const BUCKET_NAME = 'sale-photos';
+
+/**
+ * 매출 폼 데이터에서 고객 ID를 결정한다.
+ * 1) 이미 customer_id가 있으면 그대로 사용
+ * 2) 이름+전화번호가 있으면 findOrCreateCustomer로 찾기/생성
+ * 3) 그 외에는 null
+ */
+async function resolveCustomerId(
+  customerId: string | null,
+  customerName: string | null,
+  customerPhone: string | null,
+): Promise<string | null> {
+  if (customerId) return customerId;
+  if (!customerName?.trim()) return null;
+
+  if (customerPhone?.trim()) {
+    try {
+      const customer = await findOrCreateCustomer(customerName.trim(), customerPhone.trim());
+      return customer.id;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
 
 export async function getSales(month?: string) {
   const supabase = await createClient();
@@ -38,62 +66,16 @@ export async function getSales(month?: string) {
 }
 
 export async function createSale(formData: FormData) {
+  await requireAuth();
   const supabase = await createClient();
-  
+
   const productCategory = formData.get('product_category') as string;
   const customerName = formData.get('customer_name') as string || null;
   const customerPhone = formData.get('customer_phone') as string || null;
   const customerId = formData.get('customer_id') as string || null;
-  
-  // 고객 ID 처리: 기존 고객 선택 또는 새 고객 자동 생성
-  let finalCustomerId = customerId || null;
-  
-  if (!finalCustomerId && customerName && customerName.trim()) {
-    // 전화번호가 있으면 먼저 기존 고객 찾기
-    if (customerPhone && customerPhone.trim()) {
-      const { data: existingCustomer } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('phone', customerPhone.trim())
-        .single();
-      
-      if (existingCustomer) {
-        finalCustomerId = existingCustomer.id;
-      }
-    }
-    
-    // 기존 고객 없으면 새로 생성
-    if (!finalCustomerId) {
-      const tempPhone = customerPhone?.trim() || `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      const { data: newCustomer, error: customerError } = await supabase
-        .from('customers')
-        .insert({
-          name: customerName.trim(),
-          phone: tempPhone,
-          grade: 'new',
-          total_purchase_count: 0,
-          total_purchase_amount: 0
-        })
-        .select('id')
-        .single();
-      
-      if (!customerError && newCustomer) {
-        finalCustomerId = newCustomer.id;
-      } else if (customerError?.code === '23505' && customerPhone) {
-        // 전화번호 중복이면 기존 고객 찾기
-        const { data: existingCustomer } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('phone', customerPhone.trim())
-          .single();
-        
-        if (existingCustomer) {
-          finalCustomerId = existingCustomer.id;
-        }
-      }
-    }
-  }
-  
+
+  const finalCustomerId = await resolveCustomerId(customerId, customerName, customerPhone);
+
   const sale = {
     date: formData.get('date') as string,
     product_name: productCategory,
@@ -109,12 +91,13 @@ export async function createSale(formData: FormData) {
     customer_name: customerName,
     customer_phone: customerPhone,
     customer_id: finalCustomerId,
+    reservation_id: formData.get('reservation_id') as string || null,
     note: formData.get('note') as string || null,
   };
-  
+
   const { data, error } = await supabase.from('sales').insert(sale).select().single();
   if (error) throw error;
-  
+
   revalidatePath('/sales');
   revalidatePath('/customers');
   revalidatePath('/');
@@ -122,66 +105,20 @@ export async function createSale(formData: FormData) {
 }
 
 export async function updateSale(id: string, formData: FormData) {
+  await requireAuth();
   const supabase = await createClient();
-  
+
   const customerName = formData.get('customer_name') as string || null;
   const customerPhone = formData.get('customer_phone') as string || null;
   const customerId = formData.get('customer_id') as string || null;
-  
-  // 고객 ID 처리: 기존 고객 선택 또는 새 고객 자동 생성
-  let finalCustomerId = customerId || null;
-  
-  if (!finalCustomerId && customerName && customerName.trim()) {
-    // 전화번호가 있으면 먼저 기존 고객 찾기
-    if (customerPhone && customerPhone.trim()) {
-      const { data: existingCustomer } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('phone', customerPhone.trim())
-        .single();
-      
-      if (existingCustomer) {
-        finalCustomerId = existingCustomer.id;
-      }
-    }
-    
-    // 기존 고객 없으면 새로 생성
-    if (!finalCustomerId) {
-      const tempPhone = customerPhone?.trim() || `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      const { data: newCustomer, error: customerError } = await supabase
-        .from('customers')
-        .insert({
-          name: customerName.trim(),
-          phone: tempPhone,
-          grade: 'new',
-          total_purchase_count: 0,
-          total_purchase_amount: 0
-        })
-        .select('id')
-        .single();
-      
-      if (!customerError && newCustomer) {
-        finalCustomerId = newCustomer.id;
-      } else if (customerError?.code === '23505' && customerPhone) {
-        // 전화번호 중복이면 기존 고객 찾기
-        const { data: existingCustomer } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('phone', customerPhone.trim())
-          .single();
-        
-        if (existingCustomer) {
-          finalCustomerId = existingCustomer.id;
-        }
-      }
-    }
-  }
-  
+
+  const finalCustomerId = await resolveCustomerId(customerId, customerName, customerPhone);
+
   const updates: Record<string, string | number | boolean | null> = {};
-  const fields = ['date', 'product_name', 'product_category', 'amount', 'payment_method', 
+  const fields = ['date', 'product_name', 'product_category', 'amount', 'payment_method',
     'card_company', 'fee', 'expected_deposit', 'expected_deposit_date', 'deposit_status',
     'reservation_channel', 'note', 'has_review'];
-  
+
   fields.forEach(field => {
     const value = formData.get(field);
     if (value !== null && typeof value === 'string') {
@@ -194,21 +131,21 @@ export async function updateSale(id: string, formData: FormData) {
       }
     }
   });
-  
-  // 고객 정보 추가
+
   updates.customer_name = customerName;
   updates.customer_phone = customerPhone;
   updates.customer_id = finalCustomerId;
-  
+
   const { error } = await supabase.from('sales').update(updates).eq('id', id);
   if (error) throw error;
-  
+
   revalidatePath('/sales');
   revalidatePath('/customers');
   revalidatePath('/');
 }
 
 export async function deleteSale(id: string) {
+  await requireAuth();
   const supabase = await createClient();
   const { error } = await supabase.from('sales').delete().eq('id', id);
   if (error) throw error;

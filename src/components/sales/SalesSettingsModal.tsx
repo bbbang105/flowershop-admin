@@ -113,7 +113,6 @@ export function SalesSettingsModal({
               onClick={handleAddCategory}
               size="icon"
               disabled={isAddingCat}
-              className="bg-rose-500 hover:bg-rose-600"
             >
               {isAddingCat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             </Button>
@@ -121,12 +120,12 @@ export function SalesSettingsModal({
 
           <div className="space-y-2 overflow-y-auto flex-1 pr-1">
             {categories.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">등록된 카테고리가 없습니다</p>
+              <p className="text-sm text-muted-foreground text-center py-4">등록된 카테고리가 없습니다</p>
             ) : (
               categories.map((cat) => (
                 <div
                   key={cat.id}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 hover:bg-gray-100"
+                  className="flex items-center gap-2 p-2 rounded-lg bg-muted hover:bg-muted"
                 >
                   {editingCatId === cat.id ? (
                     <>
@@ -162,7 +161,7 @@ export function SalesSettingsModal({
                     </>
                   ) : deletingCatId === cat.id ? (
                     <div className="flex items-center gap-2 w-full">
-                      <span className="flex-1 text-sm text-red-600">삭제하시겠습니까?</span>
+                      <span className="flex-1 text-sm text-destructive">삭제하시겠습니까?</span>
                       <Button
                         size="sm"
                         variant="destructive"
@@ -198,7 +197,7 @@ export function SalesSettingsModal({
                           setEditCatColor(cat.color);
                         }}
                       >
-                        <Pencil className="w-4 h-4 text-gray-500" />
+                        <Pencil className="w-4 h-4 text-muted-foreground" />
                       </Button>
                       <Button
                         size="icon"
@@ -206,7 +205,7 @@ export function SalesSettingsModal({
                         className="h-8 w-8"
                         onClick={() => setDeletingCatId(cat.id)}
                       >
-                        <X className="w-4 h-4 text-red-500" />
+                        <X className="w-4 h-4 text-destructive" />
                       </Button>
                     </>
                   )}

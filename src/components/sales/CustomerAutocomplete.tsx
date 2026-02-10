@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { searchCustomersByName } from '@/lib/actions/customers';
 import { cn, formatPhoneNumber } from '@/lib/utils';
-import { User, Plus } from 'lucide-react';
+import { User, Plus, Loader2 } from 'lucide-react';
 
 interface CustomerOption {
   id: string;
@@ -27,11 +27,11 @@ const gradeLabels: Record<string, { label: string; icon: string }> = {
   blacklist: { label: '블랙', icon: '⚠️' },
 };
 
-export function CustomerAutocomplete({ 
-  value, 
-  onChange, 
+export function CustomerAutocomplete({
+  value,
+  onChange,
   placeholder = '고객명 입력',
-  className 
+  className
 }: CustomerAutocompleteProps) {
   const [inputValue, setInputValue] = useState(value);
   const [options, setOptions] = useState<CustomerOption[]>([]);
@@ -55,7 +55,7 @@ export function CustomerAutocomplete({
   // 검색 디바운스
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    
+
     if (!inputValue || inputValue.length < 1) {
       setOptions([]);
       setIsOpen(false);
@@ -106,50 +106,61 @@ export function CustomerAutocomplete({
 
   return (
     <div ref={wrapperRef} className="relative">
-      <Input
-        value={inputValue}
-        onChange={handleInputChange}
-        onFocus={() => inputValue && !selectedId && setIsOpen(true)}
-        placeholder={placeholder}
-        className={cn('bg-gray-50', className)}
-        autoComplete="off"
-      />
-      
+      <div className="relative">
+        <Input
+          value={inputValue}
+          onChange={handleInputChange}
+          onFocus={() => inputValue && !selectedId && setIsOpen(true)}
+          placeholder={placeholder}
+          className={cn('bg-muted', isLoading && 'pr-8', className)}
+          autoComplete="off"
+        />
+        {isLoading && (
+          <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+        )}
+      </div>
+
       {/* Hidden inputs for form submission */}
       <input type="hidden" name="customer_name" value={inputValue} />
       <input type="hidden" name="customer_id" value={selectedId || ''} />
-      
+
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
           {isLoading ? (
-            <div className="px-3 py-2 text-sm text-gray-500">검색 중...</div>
+            <div className="px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              검색 중...
+            </div>
           ) : (
             <>
+              {options.length === 0 && inputValue && (
+                <div className="px-3 py-2 text-sm text-muted-foreground">일치하는 고객이 없습니다</div>
+              )}
               {options.map((customer) => {
                 const grade = gradeLabels[customer.grade] || gradeLabels.new;
                 return (
                   <button
                     key={customer.id}
                     type="button"
-                    className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center gap-2 border-b border-gray-100 last:border-0"
+                    className="w-full px-3 py-2 text-left hover:bg-muted flex items-center gap-2 border-b border-border last:border-0"
                     onClick={() => handleSelect(customer)}
                   >
-                    <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-gray-900">{customer.name}</span>
+                        <span className="font-medium text-foreground">{customer.name}</span>
                         {grade.icon && <span className="text-xs">{grade.icon}</span>}
                       </div>
-                      <span className="text-xs text-gray-500">{customer.phone}</span>
+                      <span className="text-xs text-muted-foreground">{customer.phone}</span>
                     </div>
                   </button>
                 );
               })}
-              
+
               {inputValue && (
                 <button
                   type="button"
-                  className="w-full px-3 py-2 text-left hover:bg-rose-50 flex items-center gap-2 text-rose-600"
+                  className="w-full px-3 py-2 text-left hover:bg-brand-muted flex items-center gap-2 text-brand"
                   onClick={handleNewCustomer}
                 >
                   <Plus className="w-4 h-4 flex-shrink-0" />

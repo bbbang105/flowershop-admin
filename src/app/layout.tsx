@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -13,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <head>
         <link
           rel="stylesheet"
@@ -23,8 +25,12 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        {children}
-        <Toaster position="bottom-center" richColors duration={2000} />
+        <ThemeProvider>
+          <TooltipProvider delayDuration={0}>
+            {children}
+          </TooltipProvider>
+          <Toaster position="bottom-center" richColors duration={2000} />
+        </ThemeProvider>
       </body>
     </html>
   );

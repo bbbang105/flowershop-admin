@@ -43,3 +43,6 @@ next-env.d.ts
 
 # kiro
 .kiro
+
+# mcp (contains access tokens)
+.mcp.json
