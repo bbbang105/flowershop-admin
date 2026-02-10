@@ -419,7 +419,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
         <div className="relative flex-1 min-w-[150px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="검색…"
+            placeholder="검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 bg-background"

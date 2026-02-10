@@ -265,7 +265,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
         <div className="relative flex-1 min-w-[180px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="이름/연락처 검색\u2026"
+            placeholder="이름/연락처 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 bg-background"
@@ -440,7 +440,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                 name="note"
                 value={noteValue}
                 onChange={(e) => setNoteValue(e.target.value.slice(0, 200))}
-                placeholder="고객에 대한 메모를 입력하세요\u2026"
+                placeholder="고객에 대한 메모를 입력하세요..."
                 className="bg-muted min-h-[80px] resize-none"
                 maxLength={200}
               />
@@ -680,7 +680,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                   name="note"
                   value={editNoteValue}
                   onChange={(e) => setEditNoteValue(e.target.value.slice(0, 200))}
-                  placeholder="고객에 대한 메모를 입력하세요\u2026"
+                  placeholder="고객에 대한 메모를 입력하세요..."
                   className="bg-muted min-h-[80px] resize-none"
                   maxLength={200}
                 />
