@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Users, ChevronRight, Pencil, Trash2, Loader2, Phone, ShoppingBag, ExternalLink, TrendingUp } from 'lucide-react';
+import { Plus, Search, Users, Pencil, Trash2, Loader2, Phone, ShoppingBag, ExternalLink, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -274,161 +274,110 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
       </div>
 
 
-      {/* Desktop Table */}
-      <Card className="overflow-hidden hidden md:block">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40">
-                <TableHead className="w-[120px] pl-6">고객명</TableHead>
-                <TableHead className="w-[140px]">연락처</TableHead>
-                <TableHead className="w-[100px]">등급</TableHead>
-                <TableHead className="w-[100px]">구매 횟수</TableHead>
-                <TableHead className="w-[120px] hidden lg:table-cell">총 구매액</TableHead>
-                <TableHead className="w-[100px] hidden lg:table-cell">최근 구매</TableHead>
-                <TableHead className="hidden xl:table-cell">메모</TableHead>
-                <TableHead className="w-[130px] text-right pr-6"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCustomers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-16 text-muted-foreground">
-                    {(gradeFilter !== 'all' || searchQuery) ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                          <Search className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                        <p>선택한 필터에 맞는 고객이 없습니다</p>
-                        <Button variant="outline" size="sm" onClick={() => { setGradeFilter('all'); setSearchQuery(''); }}>
-                          필터 초기화
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                          <Users className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                        <p>등록된 고객이 없습니다</p>
-                        <Button variant="outline" size="sm" onClick={() => { setIsFormOpen(true); setNoteValue(''); setPhoneValue(''); setPhoneDuplicate(null); }}>
-                          첫 고객 등록하기
-                        </Button>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredCustomers.map((customer) => {
-                  const grade = gradeLabels[customer.grade];
-                  return (
-                    <TableRow
-                      key={customer.id}
-                      className="cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
-                      onClick={() => handleSelectCustomer(customer)}
-                    >
-                      <TableCell className="pl-6">
-                        <span className="font-medium text-foreground">{customer.name}</span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{customer.phone}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-md ${grade.bg} ${grade.color}`}>
-                          {grade.icon} {grade.label}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground tabular-nums">{customer.total_purchase_count}회</TableCell>
-                      <TableCell className="font-semibold text-foreground hidden lg:table-cell tabular-nums">{formatCurrency(customer.total_purchase_amount)}</TableCell>
-                      <TableCell className="text-muted-foreground hidden lg:table-cell">
-                        {customer.last_purchase_date ? format(new Date(customer.last_purchase_date), 'yy.M.d', { locale: ko }) : '-'}
-                      </TableCell>
-                      <TableCell className="hidden xl:table-cell text-muted-foreground text-sm truncate" title={customer.note || ''}>
-                        {customer.note || '-'}
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <div className="flex gap-1 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(customer);
-                            }}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(customer);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Mobile Card List */}
-      <div className="md:hidden space-y-3">
-        {filteredCustomers.length === 0 ? (
-          <Card className="p-8 text-center">
-            {(gradeFilter !== 'all' || searchQuery) ? (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <Search className="w-8 h-8 text-muted-foreground opacity-40" />
-                <p className="text-sm">선택한 필터에 맞는 고객이 없습니다</p>
-                <Button variant="outline" size="sm" onClick={() => { setGradeFilter('all'); setSearchQuery(''); }}>
-                  필터 초기화
-                </Button>
+      {/* Customer Card Grid */}
+      {filteredCustomers.length === 0 ? (
+        <Card className="p-12 text-center">
+          {(gradeFilter !== 'all' || searchQuery) ? (
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                <Search className="w-6 h-6 text-muted-foreground" />
               </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <Users className="w-8 h-8 text-muted-foreground" />
-                <p>등록된 고객이 없습니다</p>
+              <p>선택한 필터에 맞는 고객이 없습니다</p>
+              <Button variant="outline" size="sm" onClick={() => { setGradeFilter('all'); setSearchQuery(''); }}>
+                필터 초기화
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                <Users className="w-6 h-6 text-muted-foreground" />
               </div>
-            )}
-          </Card>
-        ) : (
-          filteredCustomers.map((customer) => {
+              <p>등록된 고객이 없습니다</p>
+              <Button variant="outline" size="sm" onClick={() => { setIsFormOpen(true); setNoteValue(''); setPhoneValue(''); setPhoneDuplicate(null); }}>
+                첫 고객 등록하기
+              </Button>
+            </div>
+          )}
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredCustomers.map((customer) => {
             const grade = gradeLabels[customer.grade];
             return (
               <Card
                 key={customer.id}
-                className="p-4 cursor-pointer hover:bg-muted/30 active:bg-muted active:scale-[0.99] transition-all touch-manipulation"
+                className="group cursor-pointer hover:bg-muted/30 active:bg-muted active:scale-[0.99] transition-all touch-manipulation"
                 onClick={() => handleSelectCustomer(customer)}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-foreground">{customer.name}</span>
-                      <span className={`px-2 py-0.5 text-xs font-medium rounded ${grade.bg} ${grade.color}`}>
-                        {grade.icon} {grade.label}
-                      </span>
+                <CardContent className="p-4">
+                  {/* Top: name + grade + actions */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-9 h-9 bg-muted rounded-full flex items-center justify-center shrink-0">
+                        <span className="text-sm font-bold text-muted-foreground">
+                          {customer.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-foreground text-sm truncate">{customer.name}</span>
+                          <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${grade.bg} ${grade.color} shrink-0`}>
+                            {grade.icon} {grade.label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{customer.phone}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <span>{customer.phone}</span>
-                      <span>구매 {customer.total_purchase_count}회</span>
+                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={(e) => { e.stopPropagation(); handleEdit(customer); }}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(customer); }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                    <span className="font-bold text-foreground">{formatCurrency(customer.total_purchase_amount)}</span>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">구매</p>
+                      <p className="text-sm font-semibold text-foreground tabular-nums">{customer.total_purchase_count}회</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">총액</p>
+                      <p className="text-sm font-semibold text-brand tabular-nums">{formatCurrency(customer.total_purchase_amount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">최근</p>
+                      <p className="text-sm font-medium text-foreground tabular-nums">
+                        {customer.last_purchase_date ? format(new Date(customer.last_purchase_date), 'M/d', { locale: ko }) : '-'}
+                      </p>
+                    </div>
                   </div>
-                </div>
+
+                  {/* Note preview */}
+                  {customer.note && (
+                    <p className="text-xs text-muted-foreground mt-2 truncate" title={customer.note}>
+                      {customer.note}
+                    </p>
+                  )}
+                </CardContent>
               </Card>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
 
       {/* Create Dialog */}

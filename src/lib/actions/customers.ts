@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth-guard';
 import type { Customer, CustomerGrade } from '@/types/database';
+import { customerSchema, uuidSchema, searchQuerySchema } from '@/lib/validations';
 
 export async function getCustomers() {
   const supabase = await createClient();
@@ -143,14 +144,24 @@ export async function getCustomerById(id: string) {
 export async function createCustomer(formData: FormData) {
   await requireAuth();
   const supabase = await createClient();
-  
+
+  const parsed = customerSchema.safeParse({
+    name: formData.get('name'),
+    phone: formData.get('phone'),
+    grade: formData.get('grade') || 'new',
+    note: formData.get('note') || null,
+  });
+  if (!parsed.success) {
+    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+  }
+
   const customer = {
-    name: formData.get('name') as string,
-    phone: formData.get('phone') as string,
-    grade: (formData.get('grade') as CustomerGrade) || 'new',
-    note: formData.get('note') as string || null,
+    name: parsed.data.name,
+    phone: parsed.data.phone,
+    grade: parsed.data.grade || 'new',
+    note: parsed.data.note || null,
   };
-  
+
   const { data, error } = await supabase.from('customers').insert(customer).select().single();
   if (error) throw error;
   
@@ -192,6 +203,8 @@ export async function updateCustomerGrade(id: string, grade: CustomerGrade) {
 
 export async function deleteCustomer(id: string) {
   await requireAuth();
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
   const supabase = await createClient();
   const { error } = await supabase.from('customers').delete().eq('id', id);
   if (error) throw error;
@@ -242,16 +255,19 @@ export async function getCustomerSales(customerId: string) {
 // 이름으로 고객 검색 (LIKE)
 export async function searchCustomersByName(query: string) {
   if (!query || query.length < 1) return [];
-  
+
   const supabase = await createClient();
-  
+
+  // PostgREST 와일드카드 이스케이프 (%, _, \)
+  const escaped = query.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+
   const { data, error } = await supabase
     .from('customers')
     .select('id, name, phone, grade')
-    .ilike('name', `%${query}%`)
+    .ilike('name', `%${escaped}%`)
     .order('created_at', { ascending: false })
     .limit(10);
-  
+
   if (error) throw error;
   return data as Pick<Customer, 'id' | 'name' | 'phone' | 'grade'>[];
 }
@@ -265,19 +281,35 @@ export async function checkPhoneDuplicate(phone: string, excludeId?: string) {
   // 하이픈 제거해서 비교
   const cleanPhone = phone.replace(/[^0-9]/g, '');
 
-  // 두 형태의 전화번호로 각각 조회 (문자열 보간 대신 개별 필터)
+  // 포맷된 전화번호로 먼저 조회
   let query = supabase
     .from('customers')
     .select('id, name, phone')
-    .or(`phone.eq."${phone}",phone.eq."${cleanPhone}"`);
+    .eq('phone', phone);
 
   if (excludeId) {
     query = query.neq('id', excludeId);
   }
 
   const { data } = await query.limit(1).maybeSingle();
+  if (data) return data as { id: string; name: string; phone: string };
 
-  return data as { id: string; name: string; phone: string } | null;
+  // 하이픈 없는 번호로 재조회
+  if (cleanPhone !== phone) {
+    let query2 = supabase
+      .from('customers')
+      .select('id, name, phone')
+      .eq('phone', cleanPhone);
+
+    if (excludeId) {
+      query2 = query2.neq('id', excludeId);
+    }
+
+    const { data: data2 } = await query2.limit(1).maybeSingle();
+    if (data2) return data2 as { id: string; name: string; phone: string };
+  }
+
+  return null;
 }
 
 // 고객 생성 또는 기존 고객 반환 (이름+전화번호로)

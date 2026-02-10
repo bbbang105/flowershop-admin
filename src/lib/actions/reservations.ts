@@ -2,8 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth-guard';
 import { createSale } from './sales';
 import type { Reservation, ReservationStatus, Sale } from '@/types/database';
+import { reservationSchema, uuidSchema } from '@/lib/validations';
 
 export async function getReservations(month: string): Promise<{ success: boolean; data?: Reservation[]; error?: string }> {
   const supabase = await createClient();
@@ -33,19 +35,26 @@ export async function createReservation(formData: {
   estimated_amount?: number;
   status?: ReservationStatus;
 }): Promise<{ success: boolean; data?: Reservation; error?: string }> {
+  await requireAuth();
+
+  const parsed = reservationSchema.safeParse(formData);
+  if (!parsed.success) {
+    return { success: false, error: `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}` };
+  }
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('reservations')
     .insert({
-      date: formData.date,
-      time: formData.time || null,
-      customer_name: formData.customer_name,
-      customer_phone: formData.customer_phone || null,
-      title: formData.title,
-      description: formData.description || null,
-      estimated_amount: formData.estimated_amount || 0,
-      status: formData.status || 'pending',
+      date: parsed.data.date,
+      time: parsed.data.time || null,
+      customer_name: parsed.data.customer_name,
+      customer_phone: parsed.data.customer_phone || null,
+      title: parsed.data.title,
+      description: parsed.data.description || null,
+      estimated_amount: parsed.data.estimated_amount || 0,
+      status: parsed.data.status || 'pending',
     })
     .select()
     .single();
@@ -68,6 +77,7 @@ export async function updateReservation(
     sale_id?: string | null;
   }
 ): Promise<{ success: boolean; error?: string }> {
+  await requireAuth();
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -80,6 +90,9 @@ export async function updateReservation(
 }
 
 export async function deleteReservation(id: string): Promise<{ success: boolean; error?: string }> {
+  await requireAuth();
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) return { success: false, error: '올바르지 않은 ID입니다' };
   const supabase = await createClient();
   const { error } = await supabase.from('reservations').delete().eq('id', id);
   if (error) return { success: false, error: error.message };
@@ -94,6 +107,7 @@ export async function convertReservationToSale(
   reservationId: string,
   saleFormData: FormData,
 ): Promise<{ success: boolean; sale?: Sale; error?: string }> {
+  await requireAuth();
   const supabase = await createClient();
 
   // 1. 예약 조회

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth-guard';
 
 export interface ExpenseCategory {
   id: string;
@@ -75,6 +76,7 @@ export async function getExpensePaymentMethods(): Promise<ExpensePaymentMethod[]
 
 
 export async function createExpenseCategory(label: string, color: string): Promise<ExpenseCategory> {
+  await requireAuth();
   const supabase = await createClient();
   
   // value 생성 (label을 snake_case로 변환)
@@ -102,6 +104,7 @@ export async function createExpenseCategory(label: string, color: string): Promi
 }
 
 export async function updateExpenseCategory(id: string, label: string, color: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -115,6 +118,7 @@ export async function updateExpenseCategory(id: string, label: string, color: st
 }
 
 export async function deleteExpenseCategory(id: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   const { error } = await supabase

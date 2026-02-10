@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth-guard';
 
 export interface SaleCategory {
   id: string;
@@ -38,6 +39,7 @@ export async function getSaleCategories(): Promise<SaleCategory[]> {
 
 // 카테고리 생성
 export async function createSaleCategory(label: string, color?: string): Promise<SaleCategory> {
+  await requireAuth();
   const supabase = await createClient();
   
   // value 생성 (영문 스네이크케이스)
@@ -71,6 +73,7 @@ export async function createSaleCategory(label: string, color?: string): Promise
 
 // 카테고리 수정
 export async function updateSaleCategory(id: string, label: string, color: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   const { error } = await supabase
     .from('sale_categories')
@@ -89,6 +92,7 @@ export async function updateSaleCategory(id: string, label: string, color: strin
 
 // 카테고리 삭제
 export async function deleteSaleCategory(id: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   const { error } = await supabase
     .from('sale_categories')
@@ -120,6 +124,7 @@ export async function getPaymentMethods(): Promise<PaymentMethod[]> {
 // 결제방식 생성 (주의: value는 sales 테이블 CHECK 제약조건에 맞아야 함)
 // 기본 결제방식: cash, card, transfer, naverpay, kakaopay
 export async function createPaymentMethod(label: string, color?: string, value?: string): Promise<PaymentMethod> {
+  await requireAuth();
   const supabase = await createClient();
   
   // value가 없으면 생성 (영문 스네이크케이스)
@@ -153,6 +158,7 @@ export async function createPaymentMethod(label: string, color?: string, value?:
 
 // 결제방식 수정 (value는 수정 불가 - CHECK 제약조건 때문)
 export async function updatePaymentMethod(id: string, label: string, color: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   const { error } = await supabase
     .from('payment_methods')
@@ -171,6 +177,7 @@ export async function updatePaymentMethod(id: string, label: string, color: stri
 
 // 결제방식 삭제
 export async function deletePaymentMethod(id: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   const { error } = await supabase
     .from('payment_methods')

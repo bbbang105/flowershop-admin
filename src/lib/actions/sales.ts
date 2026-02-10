@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth-guard';
 import { findOrCreateCustomer } from './customers';
 import type { Sale } from '@/types/database';
+import { saleSchema, idsSchema } from '@/lib/validations';
 
 const BUCKET_NAME = 'sale-photos';
 
@@ -74,25 +75,45 @@ export async function createSale(formData: FormData) {
   const customerPhone = formData.get('customer_phone') as string || null;
   const customerId = formData.get('customer_id') as string || null;
 
+  // 입력 검증
+  const parsed = saleSchema.safeParse({
+    date: formData.get('date'),
+    product_category: productCategory,
+    amount: parseInt(formData.get('amount') as string) || 0,
+    payment_method: formData.get('payment_method'),
+    card_company: formData.get('card_company') || null,
+    fee: formData.get('fee') ? parseInt(formData.get('fee') as string) : null,
+    expected_deposit: formData.get('expected_deposit') ? parseInt(formData.get('expected_deposit') as string) : null,
+    expected_deposit_date: formData.get('expected_deposit_date') || null,
+    deposit_status: formData.get('deposit_status') || 'not_applicable',
+    reservation_channel: formData.get('reservation_channel') || 'other',
+    customer_name: customerName,
+    customer_phone: customerPhone,
+    note: formData.get('note') || null,
+  });
+  if (!parsed.success) {
+    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+  }
+
   const finalCustomerId = await resolveCustomerId(customerId, customerName, customerPhone);
 
   const sale = {
-    date: formData.get('date') as string,
+    date: parsed.data.date,
     product_name: productCategory,
     product_category: productCategory,
-    amount: parseInt(formData.get('amount') as string),
-    payment_method: formData.get('payment_method') as string,
-    card_company: formData.get('card_company') as string || null,
-    fee: formData.get('fee') ? parseInt(formData.get('fee') as string) : null,
-    expected_deposit: formData.get('expected_deposit') ? parseInt(formData.get('expected_deposit') as string) : null,
-    expected_deposit_date: formData.get('expected_deposit_date') as string || null,
-    deposit_status: formData.get('deposit_status') as string || 'not_applicable',
-    reservation_channel: formData.get('reservation_channel') as string || 'other',
+    amount: parsed.data.amount,
+    payment_method: parsed.data.payment_method,
+    card_company: parsed.data.card_company || null,
+    fee: parsed.data.fee || null,
+    expected_deposit: parsed.data.expected_deposit || null,
+    expected_deposit_date: parsed.data.expected_deposit_date || null,
+    deposit_status: parsed.data.deposit_status || 'not_applicable',
+    reservation_channel: parsed.data.reservation_channel || 'other',
     customer_name: customerName,
     customer_phone: customerPhone,
     customer_id: finalCustomerId,
     reservation_id: formData.get('reservation_id') as string || null,
-    note: formData.get('note') as string || null,
+    note: parsed.data.note || null,
   };
 
   const { data, error } = await supabase.from('sales').insert(sale).select().single();
@@ -156,6 +177,9 @@ export async function deleteSale(id: string) {
 }
 
 export async function confirmDeposits(ids: string[]) {
+  await requireAuth();
+  const parsed = idsSchema.safeParse(ids);
+  if (!parsed.success) throw new Error('올바르지 않은 ID 목록입니다');
   const supabase = await createClient();
   const { error } = await supabase
     .from('sales')
@@ -169,6 +193,7 @@ export async function confirmDeposits(ids: string[]) {
 
 // Photo upload functions
 export async function uploadSalePhotos(saleId: string, formData: FormData): Promise<string[]> {
+  await requireAuth();
   const supabase = await createClient();
   const files = formData.getAll('photos') as File[];
   const uploadedUrls: string[] = [];
@@ -220,6 +245,7 @@ export async function uploadSalePhotos(saleId: string, formData: FormData): Prom
 }
 
 export async function deleteSalePhoto(saleId: string, photoUrl: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   // Extract path from URL

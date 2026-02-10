@@ -60,6 +60,7 @@ export async function createPhotoTag(name: string, color?: string): Promise<Phot
 }
 
 export async function updatePhotoTag(id: string, name: string, color: string): Promise<void> {
+  await requireAuth();
   const supabase = await createClient();
   
   const trimmedName = name.trim();
