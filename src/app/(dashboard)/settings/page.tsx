@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { getCardCompanySettings, updateCardCompanySetting } from '@/lib/actions/settings';
 import type { CardCompanySetting } from '@/types/database';
@@ -52,8 +53,19 @@ export default function SettingsPage() {
           <h3 className="text-sm font-medium text-foreground mb-1">카드사별 수수료율</h3>
           <p className="text-xs text-muted-foreground mb-4">수수료율: 카드사가 떼가는 비율 (예: 2.0% → 10만원 결제 시 2천원 수수료) / 입금 주기: 결제 후 입금까지 걸리는 영업일 수</p>
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <div className="space-y-3">
+              <div className="grid grid-cols-[1fr_80px_80px] gap-3 pb-2 border-b border-border">
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-3 w-14" />
+                <Skeleton className="h-3 w-14" />
+              </div>
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="grid grid-cols-[1fr_80px_80px] gap-3 items-center">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-9 w-full rounded-md" />
+                  <Skeleton className="h-9 w-full rounded-md" />
+                </div>
+              ))}
             </div>
           ) : cardSettings.length > 0 ? (
             <div className="space-y-3">

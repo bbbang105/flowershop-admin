@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -589,8 +590,19 @@ export function CalendarClient() {
 
           {/* Reservation list */}
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-10 rounded" />
+                      <Skeleton className="h-4 w-10" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <Skeleton className="h-3 w-24" />
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           ) : selectedDateReservations.length > 0 ? (
             <div className="space-y-2">
@@ -718,8 +730,13 @@ export function CalendarClient() {
               </div>
 
               {isSaleLoading ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <div className="space-y-3 py-2">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="space-y-1.5">
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-9 w-full rounded-md" />
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <>

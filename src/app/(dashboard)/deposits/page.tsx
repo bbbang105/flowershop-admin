@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -222,13 +223,13 @@ export default function DepositsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start sm:items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-semibold text-foreground tracking-tight">입금 대조</h1>
-          <p className="text-sm text-muted-foreground mt-1">카드로 결제받은 금액이 통장에 들어왔는지 확인하는 곳이에요</p>
+          <p className="text-sm text-muted-foreground mt-1 hidden sm:block">카드로 결제받은 금액이 통장에 들어왔는지 확인하는 곳이에요</p>
         </div>
         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-[150px] bg-background">
+          <SelectTrigger className="w-[130px] sm:w-[150px] bg-background shrink-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -242,16 +243,16 @@ export default function DepositsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <p className="text-xs text-muted-foreground">카드 매출 합계</p>
             <p className="text-lg font-bold text-foreground mt-1 tabular-nums">{formatCurrency(totalCardSales)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">총 {sales.length}건</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">미입금</p>
               <Clock className="h-3.5 w-3.5 text-amber-500" />
@@ -261,7 +262,7 @@ export default function DepositsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">입금완료</p>
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
@@ -271,7 +272,7 @@ export default function DepositsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <p className="text-xs text-muted-foreground">입금률</p>
             <p className="text-lg font-bold text-foreground mt-1 tabular-nums">{completionRate}%</p>
             <Progress value={completionRate} className="h-1.5 mt-2" />
@@ -282,7 +283,7 @@ export default function DepositsPage() {
 
       {/* Selection Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between p-3 bg-brand-muted rounded-lg border border-brand/20 animate-in slide-in-from-top-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-brand-muted rounded-lg border border-brand/20 animate-in slide-in-from-top-2">
           <div className="flex items-center gap-3">
             <Badge variant="secondary" className="rounded-md">
               {selectedIds.size}건 선택
@@ -303,7 +304,7 @@ export default function DepositsPage() {
 
       {/* Tabs + Filter */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="pending" className="gap-1.5">
@@ -355,14 +356,51 @@ export default function DepositsPage() {
 
         {/* Content */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              {/* Desktop skeleton */}
+              <div className="hidden md:block">
+                <div className="grid grid-cols-[50px_90px_1fr_1fr_100px_110px_110px_90px] gap-4 px-4 py-3 border-b bg-muted/40">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton key={i} className="h-4 w-full" />
+                  ))}
+                </div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="grid grid-cols-[50px_90px_1fr_1fr_100px_110px_110px_90px] gap-4 px-4 py-3.5 border-b last:border-0">
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <Skeleton className="h-4 w-12" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                    <Skeleton className="h-4 w-20 ml-auto" />
+                    <Skeleton className="h-4 w-20 ml-auto" />
+                    <Skeleton className="h-4 w-10" />
+                  </div>
+                ))}
+              </div>
+              {/* Mobile skeleton */}
+              <div className="md:hidden divide-y divide-border">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-start gap-3 p-4">
+                    <Skeleton className="h-4 w-4 rounded mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <div className="flex gap-2">
+                        <Skeleton className="h-3 w-10" />
+                        <Skeleton className="h-3 w-14 rounded-full" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <>
             {/* Pending Tab */}
             {activeTab === 'pending' && (
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden animate-in fade-in duration-200">
                 <CardContent className="p-0">
                   {filteredPending.length > 0 ? (
                     <>
@@ -401,7 +439,7 @@ export default function DepositsPage() {
                               return (
                                 <TableRow
                                   key={sale.id}
-                                  className={`hover:bg-muted/30 ${selectedIds.has(sale.id) ? 'bg-brand-muted/30' : ''}`}
+                                  className={`hover:bg-muted/50 active:bg-muted transition-colors ${selectedIds.has(sale.id) ? 'bg-brand-muted/30' : ''}`}
                                 >
                                   <TableCell className="pl-4">
                                     <Checkbox
@@ -466,7 +504,7 @@ export default function DepositsPage() {
                           return (
                             <div
                               key={sale.id}
-                              className={`flex items-start gap-3 p-4 ${selectedIds.has(sale.id) ? 'bg-brand-muted/30' : ''}`}
+                              className={`flex items-start gap-3 p-4 transition-colors touch-manipulation ${selectedIds.has(sale.id) ? 'bg-brand-muted/30' : ''}`}
                             >
                               <Checkbox
                                 checked={selectedIds.has(sale.id)}
@@ -480,7 +518,7 @@ export default function DepositsPage() {
                                       {sale.product_name}
                                     </p>
                                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                      <span className="text-xs text-muted-foreground">
+                                      <span className="text-xs text-muted-foreground tabular-nums">
                                         {format(new Date(sale.date), 'M/d')}
                                       </span>
                                       {sale.card_company && (
@@ -490,6 +528,11 @@ export default function DepositsPage() {
                                       )}
                                       {sale.customer_name && (
                                         <span className="text-xs text-muted-foreground">{sale.customer_name}</span>
+                                      )}
+                                      {sale.expected_deposit_date && (
+                                        <span className="text-xs text-amber-600 tabular-nums">
+                                          {format(new Date(sale.expected_deposit_date), 'M/d')} 예정
+                                        </span>
                                       )}
                                     </div>
                                   </div>
@@ -524,7 +567,7 @@ export default function DepositsPage() {
 
             {/* Completed Tab */}
             {activeTab === 'completed' && (
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden animate-in fade-in duration-200">
                 <CardContent className="p-0">
                   {filteredCompleted.length > 0 ? (
                     <>
@@ -550,7 +593,7 @@ export default function DepositsPage() {
                           </TableHeader>
                           <TableBody>
                             {filteredCompleted.map((sale) => (
-                              <TableRow key={sale.id} className="hover:bg-muted/30">
+                              <TableRow key={sale.id} className="hover:bg-muted/50 transition-colors">
                                 <TableCell className="text-muted-foreground tabular-nums pl-4">
                                   {format(new Date(sale.date), 'M/d')}
                                 </TableCell>

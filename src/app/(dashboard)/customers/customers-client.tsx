@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Users, ChevronRight, Pencil, Trash2, Loader2, Phone, ShoppingBag, ExternalLink } from 'lucide-react';
+import { Plus, Search, Users, ChevronRight, Pencil, Trash2, Loader2, Phone, ShoppingBag, ExternalLink, TrendingUp } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -227,7 +228,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">전체 고객</p>
-                <p className="text-xl font-bold text-foreground">{stats.total}명</p>
+                <p className="text-xl font-bold text-foreground tabular-nums">{stats.total}명</p>
               </div>
             </div>
           </CardContent>
@@ -240,7 +241,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">단골/VIP</p>
-                <p className="text-xl font-bold text-foreground">{stats.regular}명</p>
+                <p className="text-xl font-bold text-foreground tabular-nums">{stats.regular}명</p>
               </div>
             </div>
           </CardContent>
@@ -322,7 +323,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                   return (
                     <TableRow
                       key={customer.id}
-                      className="cursor-pointer hover:bg-muted/30 transition-colors"
+                      className="cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
                       onClick={() => handleSelectCustomer(customer)}
                     >
                       <TableCell className="pl-6">
@@ -334,8 +335,8 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                           {grade.icon} {grade.label}
                         </span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{customer.total_purchase_count}회</TableCell>
-                      <TableCell className="font-semibold text-foreground hidden lg:table-cell">{formatCurrency(customer.total_purchase_amount)}</TableCell>
+                      <TableCell className="text-muted-foreground tabular-nums">{customer.total_purchase_count}회</TableCell>
+                      <TableCell className="font-semibold text-foreground hidden lg:table-cell tabular-nums">{formatCurrency(customer.total_purchase_amount)}</TableCell>
                       <TableCell className="text-muted-foreground hidden lg:table-cell">
                         {customer.last_purchase_date ? format(new Date(customer.last_purchase_date), 'yy.M.d', { locale: ko }) : '-'}
                       </TableCell>
@@ -402,7 +403,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
             return (
               <Card
                 key={customer.id}
-                className="p-4 cursor-pointer hover:bg-muted/30 active:bg-muted transition-all"
+                className="p-4 cursor-pointer hover:bg-muted/30 active:bg-muted active:scale-[0.99] transition-all touch-manipulation"
                 onClick={() => handleSelectCustomer(customer)}
               >
                 <div className="flex items-start justify-between">
@@ -520,21 +521,21 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                       {gradeLabels[selectedCustomer.grade].icon} {gradeLabels[selectedCustomer.grade].label}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                  <a href={`tel:${selectedCustomer.phone.replace(/-/g, '')}`} className="flex items-center gap-1 text-muted-foreground text-sm hover:text-brand transition-colors">
                     <Phone className="w-3 h-3" />
                     <span>{selectedCustomer.phone}</span>
-                  </div>
+                  </a>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">구매 횟수</p>
-                  <p className="text-xl font-bold text-foreground">{selectedCustomer.total_purchase_count}회</p>
+                  <p className="text-xl font-bold text-foreground tabular-nums">{selectedCustomer.total_purchase_count}회</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">총 구매액</p>
-                  <p className="text-xl font-bold text-brand">{formatCurrency(selectedCustomer.total_purchase_amount)}</p>
+                  <p className="text-xl font-bold text-brand tabular-nums">{formatCurrency(selectedCustomer.total_purchase_amount)}</p>
                 </div>
               </div>
 
@@ -567,7 +568,17 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                   <p className="text-sm font-medium text-foreground">구매 이력</p>
                 </div>
                 {isLoadingSales ? (
-                  <p className="text-sm text-muted-foreground py-2">로딩 중...</p>
+                  <div className="space-y-2 py-1">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex justify-between items-center p-2 bg-muted rounded">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-3.5 w-8" />
+                          <Skeleton className="h-5 w-16 rounded" />
+                        </div>
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    ))}
+                  </div>
                 ) : customerSales.length > 0 ? (
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {customerSales.slice(0, 5).map((sale) => (
@@ -610,7 +621,10 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground py-2">구매 이력이 없습니다</p>
+                  <div className="flex flex-col items-center gap-1.5 py-4 text-center">
+                    <TrendingUp className="w-5 h-5 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">아직 구매 이력이 없습니다</p>
+                  </div>
                 )}
               </div>
 

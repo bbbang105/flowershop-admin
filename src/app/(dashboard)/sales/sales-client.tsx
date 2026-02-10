@@ -474,7 +474,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
                 filteredSales.map((sale) => (
                   <TableRow
                     key={sale.id}
-                    className="cursor-pointer hover:bg-muted/30 transition-colors"
+                    className="cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
                     onClick={() => handleSelectSale(sale)}
                   >
                     <TableCell className="text-muted-foreground pl-6">{format(new Date(sale.date), 'M/d (E)', { locale: ko })}</TableCell>
@@ -583,7 +583,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
           filteredSales.map((sale) => (
             <Card
               key={sale.id}
-              className="p-4 cursor-pointer hover:bg-muted/30 active:bg-muted transition-all"
+              className="p-4 cursor-pointer hover:bg-muted/30 active:bg-muted active:scale-[0.99] transition-all touch-manipulation"
               onClick={() => handleSelectSale(sale)}
             >
               <div className="flex items-center justify-between gap-3">
