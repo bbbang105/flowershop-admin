@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,6 +25,8 @@ import type { PhotoCard, Sale, CardCompanySetting } from '@/types/database';
 import { calculateSalesSummary } from '@/lib/utils';
 import { SaleCategory, PaymentMethod, getSaleCategories, getPaymentMethods } from '@/lib/actions/sale-settings';
 import { getCardCompanySettings } from '@/lib/actions/settings';
+import { ExportButton } from '@/components/ui/export-button';
+import type { ExportConfig } from '@/lib/export';
 
 const channelLabels: Record<string, string> = {
   phone: '전화', kakaotalk: '카카오톡', naver_booking: '네이버예약', road: '로드', other: '기타',
@@ -144,6 +146,21 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
 
   const summary = useMemo(() => calculateSalesSummary(filteredSales), [filteredSales]);
 
+  const getExportConfig = useCallback((): ExportConfig => ({
+    filename: `매출_${currentYear}-${String(currentMonth).padStart(2, '0')}`,
+    title: `매출 내역 (${currentYear}년 ${currentMonth}월)`,
+    columns: [
+      { header: '날짜', accessor: (s) => String(s.date || '') },
+      { header: '카테고리', accessor: (s) => categoryLabels[s.product_category as string] || String(s.product_category || '') },
+      { header: '금액', accessor: (s) => Number(s.amount) || 0, format: 'currency' },
+      { header: '결제방법', accessor: (s) => paymentLabels[s.payment_method as string] || String(s.payment_method || '') },
+      { header: '채널', accessor: (s) => channelLabels[s.reservation_channel as string] || '' },
+      { header: '고객명', accessor: (s) => String(s.customer_name || '') },
+      { header: '비고', accessor: (s) => String(s.note || '') },
+    ],
+    data: filteredSales as unknown as Record<string, unknown>[],
+  }), [filteredSales, currentYear, currentMonth, categoryLabels, paymentLabels]);
+
   // 매출 상세 선택 시 사진 로드
   const handleSelectSale = async (sale: Sale) => {
     setSelectedSale(sale);
@@ -249,10 +266,13 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
           <h1 className="text-xl font-semibold text-foreground tracking-tight">매출 관리</h1>
           <p className="text-sm text-muted-foreground mt-1">매출 내역을 등록하고 관리하세요</p>
         </div>
-        <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setSelectedPaymentMethod(payments[0]?.value || 'card'); setCustomerName(''); setCustomerId(null); setCustomerPhone(null); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          매출 등록
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportButton getExportConfig={getExportConfig} />
+          <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setSelectedPaymentMethod(payments[0]?.value || 'card'); setCustomerName(''); setCustomerId(null); setCustomerPhone(null); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            매출 등록
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards - Responsive Grid */}
