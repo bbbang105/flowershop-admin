@@ -6,6 +6,7 @@ CREATE TABLE customers (
   name VARCHAR(100) NOT NULL,
   phone VARCHAR(20) NOT NULL UNIQUE,
   grade VARCHAR(20) DEFAULT 'new' CHECK (grade IN ('new', 'regular', 'vip', 'blacklist')),
+  gender VARCHAR(10) DEFAULT NULL CHECK (gender IN ('male', 'female')),
   total_purchase_count INTEGER DEFAULT 0,
   total_purchase_amount INTEGER DEFAULT 0,
   first_purchase_date TIMESTAMPTZ,

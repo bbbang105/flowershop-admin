@@ -35,6 +35,7 @@ export const customerSchema = z.object({
   name: z.string().min(1, '이름을 입력해주세요').max(100),
   phone: z.string().min(10).max(20),
   grade: z.enum(['new', 'regular', 'vip', 'blacklist']).optional(),
+  gender: z.enum(['male', 'female']).nullable().optional(),
   note: z.string().max(1000).nullable().optional(),
 });
 

@@ -146,6 +146,11 @@ async function _getCustomerById(id: string) {
 
 export const getCustomerById = withErrorLogging('getCustomerById', _getCustomerById);
 
+function parseGender(formData: FormData): 'male' | 'female' | null {
+  const raw = formData.get('gender');
+  return (raw === 'male' || raw === 'female') ? raw : null;
+}
+
 async function _createCustomer(formData: FormData) {
   await requireAuth();
   const supabase = await createClient();
@@ -154,6 +159,7 @@ async function _createCustomer(formData: FormData) {
     name: formData.get('name'),
     phone: formData.get('phone'),
     grade: formData.get('grade') || 'new',
+    gender: parseGender(formData),
     note: formData.get('note') || null,
   });
   if (!parsed.success) {
@@ -164,6 +170,7 @@ async function _createCustomer(formData: FormData) {
     name: parsed.data.name,
     phone: parsed.data.phone,
     grade: parsed.data.grade || 'new',
+    gender: parsed.data.gender ?? null,
     note: parsed.data.note || null,
   };
 
@@ -186,6 +193,7 @@ async function _updateCustomer(id: string, formData: FormData) {
     name: formData.get('name') || undefined,
     phone: formData.get('phone') || undefined,
     grade: formData.get('grade') || undefined,
+    gender: parseGender(formData),
     note: formData.get('note') || null,
   });
   if (!parsed.success) {
