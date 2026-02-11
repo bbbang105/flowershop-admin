@@ -26,6 +26,7 @@ export const saleSchema = z.object({
   customer_name: z.string().max(100).nullable().optional(),
   customer_phone: z.string().max(20).nullable().optional(),
   customer_id: uuidSchema.nullable().optional(),
+  reservation_id: uuidSchema.nullable().optional(),
   note: z.string().max(1000).nullable().optional(),
 });
 
@@ -100,6 +101,26 @@ export const searchQuerySchema = z.string().min(1).max(100);
 
 // 월 필터
 export const monthSchema = z.string().regex(/^\d{4}-\d{2}$/, '월 형식이 올바르지 않습니다 (YYYY-MM)');
+
+// 이미지 파일 검증
+const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
+const ALLOWED_IMAGE_MIME_TYPES = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+];
+
+export function validateImageFile(file: File): string | null {
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (!ext || !ALLOWED_IMAGE_EXTENSIONS.includes(ext)) {
+    return `허용되지 않는 파일 형식입니다: .${ext || '(없음)'}`;
+  }
+  if (file.type && !ALLOWED_IMAGE_MIME_TYPES.includes(file.type)) {
+    return `허용되지 않는 MIME 타입입니다: ${file.type}`;
+  }
+  return null;
+}
+
+// 고객 등급 단독 검증
+export const customerGradeSchema = z.enum(['new', 'regular', 'vip', 'blacklist']);
 
 // FormData에서 값을 안전하게 추출하는 헬퍼
 export function getFormString(formData: FormData, key: string): string {

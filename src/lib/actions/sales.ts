@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth-guard';
 import { findOrCreateCustomer } from './customers';
 import type { Sale } from '@/types/database';
-import { saleSchema, idsSchema } from '@/lib/validations';
+import { saleSchema, idsSchema, uuidSchema, validateImageFile } from '@/lib/validations';
 
 const BUCKET_NAME = 'sale-photos';
 
@@ -89,6 +89,7 @@ export async function createSale(formData: FormData) {
     reservation_channel: formData.get('reservation_channel') || 'other',
     customer_name: customerName,
     customer_phone: customerPhone,
+    reservation_id: formData.get('reservation_id') as string || null,
     note: formData.get('note') || null,
   });
   if (!parsed.success) {
@@ -112,7 +113,7 @@ export async function createSale(formData: FormData) {
     customer_name: customerName,
     customer_phone: customerPhone,
     customer_id: finalCustomerId,
-    reservation_id: formData.get('reservation_id') as string || null,
+    reservation_id: parsed.data.reservation_id || null,
     note: parsed.data.note || null,
   };
 
@@ -127,35 +128,46 @@ export async function createSale(formData: FormData) {
 
 export async function updateSale(id: string, formData: FormData) {
   await requireAuth();
-  const supabase = await createClient();
+
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
 
   const customerName = formData.get('customer_name') as string || null;
   const customerPhone = formData.get('customer_phone') as string || null;
   const customerId = formData.get('customer_id') as string || null;
 
+  const parsed = saleSchema.partial().safeParse({
+    date: formData.get('date') || undefined,
+    product_category: formData.get('product_category') || undefined,
+    amount: formData.get('amount') ? parseInt(formData.get('amount') as string) : undefined,
+    payment_method: formData.get('payment_method') || undefined,
+    card_company: formData.get('card_company') || null,
+    fee: formData.get('fee') ? parseInt(formData.get('fee') as string) : null,
+    expected_deposit: formData.get('expected_deposit') ? parseInt(formData.get('expected_deposit') as string) : null,
+    expected_deposit_date: formData.get('expected_deposit_date') || null,
+    deposit_status: formData.get('deposit_status') || undefined,
+    reservation_channel: formData.get('reservation_channel') || undefined,
+    customer_name: customerName,
+    customer_phone: customerPhone,
+    note: formData.get('note') || null,
+  });
+  if (!parsed.success) {
+    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+  }
+
+  const supabase = await createClient();
   const finalCustomerId = await resolveCustomerId(customerId, customerName, customerPhone);
 
-  const updates: Record<string, string | number | boolean | null> = {};
-  const fields = ['date', 'product_name', 'product_category', 'amount', 'payment_method',
-    'card_company', 'fee', 'expected_deposit', 'expected_deposit_date', 'deposit_status',
-    'reservation_channel', 'note', 'has_review'];
+  const updates: Record<string, string | number | boolean | null | undefined> = {
+    ...parsed.data,
+    product_name: parsed.data.product_category,
+    customer_id: finalCustomerId,
+  };
 
-  fields.forEach(field => {
-    const value = formData.get(field);
-    if (value !== null && typeof value === 'string') {
-      if (['amount', 'fee', 'expected_deposit'].includes(field)) {
-        updates[field] = value ? parseInt(value) : null;
-      } else if (field === 'has_review') {
-        updates[field] = value === 'true';
-      } else {
-        updates[field] = value || null;
-      }
-    }
-  });
-
-  updates.customer_name = customerName;
-  updates.customer_phone = customerPhone;
-  updates.customer_id = finalCustomerId;
+  const hasReview = formData.get('has_review');
+  if (hasReview !== null) {
+    updates.has_review = hasReview === 'true';
+  }
 
   const { error } = await supabase.from('sales').update(updates).eq('id', id);
   if (error) throw error;
@@ -200,7 +212,10 @@ export async function uploadSalePhotos(saleId: string, formData: FormData): Prom
   
   for (const file of files) {
     if (!file.size) continue;
-    
+
+    const imageError = validateImageFile(file);
+    if (imageError) throw new Error(imageError);
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${saleId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     

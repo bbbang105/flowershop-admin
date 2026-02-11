@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth-guard';
 import { PhotoCard, PhotoFile } from '@/types/database';
+import { validateImageFile, photoCardSchema } from '@/lib/validations';
 
 const MAX_PHOTOS_PER_CARD = 10;
 
@@ -78,25 +79,32 @@ export async function createPhotoCard(formData: FormData): Promise<PhotoCard> {
   const photosJson = formData.get('photos') as string;
   const saleId = formData.get('sale_id') as string | null;
 
-  const trimmedTitle = title?.trim();
-  if (!trimmedTitle) {
-    throw new Error('제목을 입력해주세요');
+  let tags: string[];
+  let photos: PhotoFile[];
+  try {
+    tags = tagsJson ? JSON.parse(tagsJson) : [];
+    photos = photosJson ? JSON.parse(photosJson) : [];
+  } catch {
+    throw new Error('태그 또는 사진 데이터 형식이 올바르지 않습니다');
   }
-  
-  const tags: string[] = tagsJson ? JSON.parse(tagsJson) : [];
-  const photos: PhotoFile[] = photosJson ? JSON.parse(photosJson) : [];
-  
-  if (photos.length > MAX_PHOTOS_PER_CARD) {
-    throw new Error(`사진은 최대 ${MAX_PHOTOS_PER_CARD}장까지 등록할 수 있습니다`);
+
+  const parsed = photoCardSchema.safeParse({
+    title: title?.trim(),
+    description: description?.trim() || null,
+    tags,
+    photos,
+  });
+  if (!parsed.success) {
+    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
   }
-  
+
   const { data, error } = await supabase
     .from('photo_cards')
     .insert({
-      title: trimmedTitle,
-      description: description?.trim() || null,
-      tags,
-      photos,
+      title: parsed.data.title,
+      description: parsed.data.description || null,
+      tags: parsed.data.tags || [],
+      photos: parsed.data.photos || [],
       sale_id: saleId || null,
     })
     .select()
@@ -120,25 +128,32 @@ export async function updatePhotoCard(id: string, formData: FormData): Promise<v
   const photosJson = formData.get('photos') as string;
   const saleId = formData.get('sale_id') as string | null;
   
-  const trimmedTitle = title?.trim();
-  if (!trimmedTitle) {
-    throw new Error('제목을 입력해주세요');
+  let tags: string[];
+  let photos: PhotoFile[];
+  try {
+    tags = tagsJson ? JSON.parse(tagsJson) : [];
+    photos = photosJson ? JSON.parse(photosJson) : [];
+  } catch {
+    throw new Error('태그 또는 사진 데이터 형식이 올바르지 않습니다');
   }
-  
-  const tags: string[] = tagsJson ? JSON.parse(tagsJson) : [];
-  const photos: PhotoFile[] = photosJson ? JSON.parse(photosJson) : [];
-  
-  if (photos.length > MAX_PHOTOS_PER_CARD) {
-    throw new Error(`사진은 최대 ${MAX_PHOTOS_PER_CARD}장까지 등록할 수 있습니다`);
+
+  const parsed = photoCardSchema.safeParse({
+    title: title?.trim(),
+    description: description?.trim() || null,
+    tags,
+    photos,
+  });
+  if (!parsed.success) {
+    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
   }
-  
+
   const { error } = await supabase
     .from('photo_cards')
     .update({
-      title: trimmedTitle,
-      description: description?.trim() || null,
-      tags,
-      photos,
+      title: parsed.data.title,
+      description: parsed.data.description || null,
+      tags: parsed.data.tags || [],
+      photos: parsed.data.photos || [],
       sale_id: saleId || null,
     })
     .eq('id', id);
@@ -198,6 +213,9 @@ export async function uploadPhotos(cardId: string, formData: FormData): Promise<
   
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
+    const imageError = validateImageFile(file);
+    if (imageError) throw new Error(imageError);
+
     const originalName = originalNames[i] || file.name;
     const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${cardId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;

@@ -78,11 +78,40 @@ export async function updateReservation(
   }
 ): Promise<{ success: boolean; error?: string }> {
   await requireAuth();
-  const supabase = await createClient();
 
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) return { success: false, error: '올바르지 않은 ID입니다' };
+
+  const parsed = reservationSchema.partial().safeParse({
+    date: formData.date,
+    time: formData.time,
+    customer_name: formData.customer_name,
+    customer_phone: formData.customer_phone,
+    title: formData.title,
+    description: formData.description,
+    estimated_amount: formData.estimated_amount,
+    status: formData.status,
+  });
+  if (!parsed.success) {
+    return { success: false, error: `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}` };
+  }
+
+  const updates: Record<string, unknown> = {
+    ...parsed.data,
+    updated_at: new Date().toISOString(),
+  };
+  if (formData.sale_id !== undefined) {
+    const saleParsed = formData.sale_id ? uuidSchema.safeParse(formData.sale_id) : null;
+    if (formData.sale_id && (!saleParsed || !saleParsed.success)) {
+      return { success: false, error: '올바르지 않은 매출 ID입니다' };
+    }
+    updates.sale_id = formData.sale_id;
+  }
+
+  const supabase = await createClient();
   const { error } = await supabase
     .from('reservations')
-    .update({ ...formData, updated_at: new Date().toISOString() })
+    .update(updates)
     .eq('id', id);
 
   if (error) return { success: false, error: error.message };
