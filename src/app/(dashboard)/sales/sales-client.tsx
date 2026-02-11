@@ -280,7 +280,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">총 매출</p>
-                <p className="text-lg font-bold text-foreground truncate">{formatCurrency(summary.total)}</p>
+                <p className="text-sm sm:text-lg font-bold text-foreground">{formatCurrency(summary.total)}</p>
               </div>
             </div>
           </CardContent>
@@ -293,7 +293,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">카드</p>
-                <p className="text-lg font-bold text-foreground truncate">{formatCurrency(summary.card)}</p>
+                <p className="text-sm sm:text-lg font-bold text-foreground">{formatCurrency(summary.card)}</p>
               </div>
             </div>
           </CardContent>
@@ -306,7 +306,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">네이버페이</p>
-                <p className="text-lg font-bold text-foreground truncate">{formatCurrency(summary.naverpay)}</p>
+                <p className="text-sm sm:text-lg font-bold text-foreground">{formatCurrency(summary.naverpay)}</p>
               </div>
             </div>
           </CardContent>
@@ -319,7 +319,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">계좌이체</p>
-                <p className="text-lg font-bold text-foreground truncate">{formatCurrency(summary.transfer)}</p>
+                <p className="text-sm sm:text-lg font-bold text-foreground">{formatCurrency(summary.transfer)}</p>
               </div>
             </div>
           </CardContent>
@@ -332,7 +332,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">현금</p>
-                <p className="text-lg font-bold text-foreground truncate">{formatCurrency(summary.cash)}</p>
+                <p className="text-sm sm:text-lg font-bold text-foreground">{formatCurrency(summary.cash)}</p>
               </div>
             </div>
           </CardContent>
