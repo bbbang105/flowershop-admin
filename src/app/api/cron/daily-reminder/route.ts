@@ -24,6 +24,16 @@ function verifyCronAuth(request: Request): boolean {
   return false;
 }
 
+// 영구적 실패 상태코드만 비활성화
+const PERMANENT_FAILURE_CODES = new Set([404, 410]);
+
+function getEndpointType(endpoint: string): string {
+  if (endpoint.includes('apple.com')) return 'Apple';
+  if (endpoint.includes('fcm.googleapis.com')) return 'FCM';
+  if (endpoint.includes('mozilla.com')) return 'Mozilla';
+  return 'Unknown';
+}
+
 interface SubscriptionRow {
   endpoint: string;
   p256dh: string | null;
@@ -106,6 +116,10 @@ export async function GET(request: Request) {
 
     const subs = subscriptions as unknown as SubscriptionRow[];
 
+    console.log(`[Cron:daily] ${subs.length}개 구독에 전송 시작`, {
+      endpoints: subs.map((s) => getEndpointType(s.endpoint)),
+    });
+
     const results = await Promise.allSettled(
       subs.map((sub) =>
         webpush.sendNotification(
@@ -118,16 +132,33 @@ export async function GET(request: Request) {
       ),
     );
 
-    // 실패한 구독 비활성화
-    const failedEndpoints = subs
-      .filter((_, i) => results[i]?.status === 'rejected')
-      .map((s) => s.endpoint);
+    // 실패 분석 + 영구 실패만 비활성화
+    const permanentFailEndpoints: string[] = [];
+    let failCount = 0;
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i]!;
+      if (result.status === 'rejected') {
+        failCount++;
+        const err = result.reason as { statusCode?: number; body?: string; message?: string };
+        const endpointType = getEndpointType(subs[i]!.endpoint);
+        console.error(
+          `[Cron:daily] 전송 실패 [${endpointType}]`,
+          `status=${err.statusCode}`,
+          `body=${typeof err.body === 'string' ? err.body.slice(0, 200) : ''}`,
+          `message=${err.message || ''}`,
+        );
+        if (err.statusCode && PERMANENT_FAILURE_CODES.has(err.statusCode)) {
+          permanentFailEndpoints.push(subs[i]!.endpoint);
+        }
+      }
+    }
 
-    if (failedEndpoints.length > 0) {
+    if (permanentFailEndpoints.length > 0) {
       await supabase
         .from('push_subscriptions')
         .update({ is_active: false } as never)
-        .in('endpoint', failedEndpoints);
+        .in('endpoint', permanentFailEndpoints);
+      console.log(`[Cron:daily] ${permanentFailEndpoints.length}개 구독 비활성화 (영구 실패)`);
     }
 
     const sent = results.filter((r) => r.status === 'fulfilled').length;
@@ -136,7 +167,7 @@ export async function GET(request: Request) {
       message: 'Daily reminder sent',
       reservations: count,
       sent,
-      failed: failedEndpoints.length,
+      failed: failCount,
     });
   } catch (error) {
     console.error('Daily reminder error:', error);

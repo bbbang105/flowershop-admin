@@ -20,6 +20,16 @@ function verifyCronAuth(request: Request): boolean {
   return false;
 }
 
+// 영구적 실패 상태코드만 비활성화
+const PERMANENT_FAILURE_CODES = new Set([404, 410]);
+
+function getEndpointType(endpoint: string): string {
+  if (endpoint.includes('apple.com')) return 'Apple';
+  if (endpoint.includes('fcm.googleapis.com')) return 'FCM';
+  if (endpoint.includes('mozilla.com')) return 'Mozilla';
+  return 'Unknown';
+}
+
 interface SubscriptionRow {
   endpoint: string;
   p256dh: string | null;
@@ -119,6 +129,10 @@ export async function GET(request: Request) {
         requireInteraction: true,
       });
 
+      console.log(`[Cron:scheduled] 리마인더 "${r.title}" -> ${subs.length}개 구독 전송`, {
+        endpoints: subs.map((s) => getEndpointType(s.endpoint)),
+      });
+
       const results = await Promise.allSettled(
         subs.map((sub) =>
           webpush.sendNotification(
@@ -131,19 +145,36 @@ export async function GET(request: Request) {
         ),
       );
 
-      const failedEndpoints = subs
-        .filter((_, i) => results[i]?.status === 'rejected')
-        .map((s) => s.endpoint);
+      const permanentFailEndpoints: string[] = [];
+      let reminderFailed = 0;
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j]!;
+        if (result.status === 'rejected') {
+          reminderFailed++;
+          const err = result.reason as { statusCode?: number; body?: string; message?: string };
+          const endpointType = getEndpointType(subs[j]!.endpoint);
+          console.error(
+            `[Cron:scheduled] 전송 실패 [${endpointType}]`,
+            `status=${err.statusCode}`,
+            `body=${typeof err.body === 'string' ? err.body.slice(0, 200) : ''}`,
+            `message=${err.message || ''}`,
+          );
+          if (err.statusCode && PERMANENT_FAILURE_CODES.has(err.statusCode)) {
+            permanentFailEndpoints.push(subs[j]!.endpoint);
+          }
+        }
+      }
 
-      if (failedEndpoints.length > 0) {
+      if (permanentFailEndpoints.length > 0) {
         await supabase
           .from('push_subscriptions')
           .update({ is_active: false } as never)
-          .in('endpoint', failedEndpoints);
+          .in('endpoint', permanentFailEndpoints);
+        console.log(`[Cron:scheduled] ${permanentFailEndpoints.length}개 구독 비활성화 (영구 실패)`);
       }
 
       totalSent += results.filter((r) => r.status === 'fulfilled').length;
-      totalFailed += failedEndpoints.length;
+      totalFailed += reminderFailed;
     }
 
     // 전송 완료된 리마인더 초기화 (중복 방지)
