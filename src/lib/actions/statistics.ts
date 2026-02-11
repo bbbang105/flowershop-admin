@@ -221,21 +221,23 @@ export async function getCustomerStats(month?: string): Promise<CustomerStat> {
 
   const totalCustomers = uniquePhones.size;
 
-  // 해당 월 이전에 구매 이력이 있는 고객 수 확인
-  let returningCustomers = 0;
-  
-  for (const phone of uniquePhones) {
-    const { data: previousSales } = await supabase
-      .from('sales')
-      .select('id')
-      .eq('customer_phone', phone)
-      .lt('date', startDate)
-      .limit(1);
-
-    if (previousSales && previousSales.length > 0) {
-      returningCustomers += 1;
-    }
+  if (totalCustomers === 0) {
+    return { newCustomers: 0, returningCustomers: 0, totalCustomers: 0 };
   }
+
+  // 단일 쿼리로 이전 구매 이력 확인 (N+1 제거)
+  const { data: previousSales, error: prevError } = await supabase
+    .from('sales')
+    .select('customer_phone')
+    .in('customer_phone', Array.from(uniquePhones))
+    .lt('date', startDate);
+
+  if (prevError) throw prevError;
+
+  const returningPhones = new Set(
+    (previousSales || []).map((s) => s.customer_phone)
+  );
+  const returningCustomers = returningPhones.size;
 
   return {
     newCustomers: totalCustomers - returningCustomers,
@@ -291,28 +293,39 @@ export interface MonthlySalesTrend {
 
 export async function getMonthlySalesTrend(months: number = 6): Promise<MonthlySalesTrend[]> {
   const supabase = await createClient();
-  const trends: MonthlySalesTrend[] = [];
   const now = new Date();
 
+  // 전체 기간을 단일 쿼리로 조회 (N+1 제거)
+  const startMonth = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+  const startDate = startMonth.toISOString().split('T')[0];
+  const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('sales')
+    .select('date, amount')
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  if (error) throw error;
+
+  // JS에서 월별 그룹핑
+  const monthMap = new Map<string, { amount: number; count: number }>();
+  (data || []).forEach((sale) => {
+    const [year, m] = sale.date.split('-');
+    const monthKey = `${year}-${m}`;
+    const existing = monthMap.get(monthKey) || { amount: 0, count: 0 };
+    existing.amount += sale.amount;
+    existing.count += 1;
+    monthMap.set(monthKey, existing);
+  });
+
+  const trends: MonthlySalesTrend[] = [];
   for (let i = months - 1; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const startDate = date.toISOString().split('T')[0];
-    const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     const label = `${date.getMonth() + 1}월`;
-
-    const { data, error } = await supabase
-      .from('sales')
-      .select('amount')
-      .gte('date', startDate)
-      .lte('date', endDate);
-
-    if (error) throw error;
-
-    const totalAmount = (data || []).reduce((sum, sale) => sum + sale.amount, 0);
-    const salesCount = (data || []).length;
-
-    trends.push({ month: monthKey, label, totalAmount, salesCount });
+    const stats = monthMap.get(monthKey) || { amount: 0, count: 0 };
+    trends.push({ month: monthKey, label, totalAmount: stats.amount, salesCount: stats.count });
   }
 
   return trends;

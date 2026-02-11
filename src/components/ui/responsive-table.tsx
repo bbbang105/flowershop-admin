@@ -85,8 +85,8 @@ export function ResponsiveTableRow({ children, className, onClick, mobileCard }:
       return (
         <div 
           className={cn(
-            'bg-white border rounded-lg p-4 shadow-sm',
-            onClick && 'cursor-pointer hover:bg-gray-50 active:bg-gray-100',
+            'bg-card border rounded-lg p-4 shadow-sm',
+            onClick && 'cursor-pointer hover:bg-muted active:bg-muted/80',
             className
           )}
           onClick={onClick}
@@ -135,7 +135,7 @@ export function MobileCardHeader({ children, className }: { children: React.Reac
 
 export function MobileCardTitle({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <span className={cn('font-medium text-gray-900', className)}>
+    <span className={cn('font-medium text-foreground', className)}>
       {children}
     </span>
   );
@@ -143,7 +143,7 @@ export function MobileCardTitle({ children, className }: { children: React.React
 
 export function MobileCardBadge({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <span className={cn('text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600', className)}>
+    <span className={cn('text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground', className)}>
       {children}
     </span>
   );
@@ -160,8 +160,8 @@ export function MobileCardContent({ children, className }: { children: React.Rea
 export function MobileCardRow({ label, value, className }: { label: string; value: React.ReactNode; className?: string }) {
   return (
     <div className={cn('flex justify-between items-center', className)}>
-      <span className="text-gray-500">{label}</span>
-      <span className="text-gray-900">{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground">{value}</span>
     </div>
   );
 }
@@ -180,7 +180,7 @@ export function ResponsiveTableEmpty({ colSpan, message }: { colSpan: number; me
   
   if (isMobileView) {
     return (
-      <div className="text-center py-12 text-gray-500 bg-white border rounded-lg">
+      <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg">
         {message}
       </div>
     );
@@ -188,7 +188,7 @@ export function ResponsiveTableEmpty({ colSpan, message }: { colSpan: number; me
   
   return (
     <tr>
-      <td colSpan={colSpan} className="text-center py-12 text-gray-500">
+      <td colSpan={colSpan} className="text-center py-12 text-muted-foreground">
         {message}
       </td>
     </tr>

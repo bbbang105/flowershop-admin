@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { CardCompanySetting } from '@/types/database';
+import { requireAuth } from '@/lib/auth-guard';
 
 // ============ Card Company Settings ============
 
@@ -23,6 +24,8 @@ export async function updateCardCompanySetting(
   id: string, 
   updates: { fee_rate?: number; deposit_days?: number }
 ): Promise<void> {
+  await requireAuth();
+
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -39,6 +42,8 @@ export async function createCardCompanySetting(
   feeRate: number = 2.0, 
   depositDays: number = 3
 ): Promise<CardCompanySetting> {
+  await requireAuth();
+
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -53,6 +58,8 @@ export async function createCardCompanySetting(
 }
 
 export async function deleteCardCompanySetting(id: string): Promise<void> {
+  await requireAuth();
+
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -88,6 +95,8 @@ export async function getProductCategories(): Promise<ProductCategory[]> {
 }
 
 export async function createProductCategory(name: string): Promise<ProductCategory> {
+  await requireAuth();
+
   const supabase = await createClient();
   
   // 현재 최대 sort_order 가져오기
@@ -114,6 +123,8 @@ export async function updateProductCategory(
   id: string, 
   updates: { name?: string; sort_order?: number }
 ): Promise<void> {
+  await requireAuth();
+
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -126,6 +137,8 @@ export async function updateProductCategory(
 }
 
 export async function deleteProductCategory(id: string): Promise<void> {
+  await requireAuth();
+
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -143,6 +156,8 @@ export async function saveAllSettings(
   cardSettings: Array<{ id: string; fee_rate: number; deposit_days: number }>,
   categories: string[]
 ): Promise<void> {
+  await requireAuth();
+
   const supabase = await createClient();
 
   // 카드 설정 업데이트

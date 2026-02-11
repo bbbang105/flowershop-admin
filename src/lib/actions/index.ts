@@ -5,7 +5,6 @@ export {
   createSale,
   updateSale,
   deleteSale,
-  confirmDeposits,
   uploadSalePhotos,
   deleteSalePhoto,
 } from './sales';
@@ -83,3 +82,26 @@ export type {
   MonthlySalesTrend,
   DailySalesTrend,
 } from './statistics';
+
+// Photo Tags
+export {
+  getPhotoTags,
+  createPhotoTag,
+  deletePhotoTag,
+} from './photo-tags';
+
+// Photo Cards
+export {
+  getPhotoCards,
+  getPhotoCardById,
+  createPhotoCard,
+  updatePhotoCard,
+  deletePhotoCard,
+  uploadPhotos,
+  deletePhoto,
+  deletePhotosFromStorage,
+  downloadPhoto,
+  downloadAllPhotos,
+  reorderPhotos,
+} from './photo-cards';
+export type { PhotoCardsResponse } from './photo-cards';

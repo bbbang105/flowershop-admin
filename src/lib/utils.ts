@@ -67,3 +67,25 @@ export function calculateSalesSummary(sales: Sale[]): SalesSummary {
     return acc;
   }, { total: 0, card: 0, naverpay: 0, transfer: 0, cash: 0, count: 0 });
 }
+
+// 통화 포맷팅 (₩1,000,000 형태)
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+// 전화번호 포맷팅 (010-1234-5678 형태)
+export function formatPhoneNumber(value: string): string {
+  const numbers = value.replace(/[^0-9]/g, '');
+  
+  if (numbers.length <= 3) {
+    return numbers;
+  } else if (numbers.length <= 7) {
+    return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+  } else {
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+  }
+}
