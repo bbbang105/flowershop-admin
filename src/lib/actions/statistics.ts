@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import type { PaymentMethod, ReservationChannel, ExpenseCategory } from '@/types/database';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 
 export interface CategoryStat {
   name: string;
@@ -65,9 +66,9 @@ const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 };
 
 
-export async function getCategoryStats(month?: string): Promise<CategoryStat[]> {
+async function _getCategoryStats(month?: string): Promise<CategoryStat[]> {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('sales')
     .select('product_category, amount');
@@ -104,9 +105,11 @@ export async function getCategoryStats(month?: string): Promise<CategoryStat[]> 
     .sort((a, b) => b.amount - a.amount);
 }
 
-export async function getPaymentMethodStats(month?: string): Promise<PaymentMethodStat[]> {
+export const getCategoryStats = withErrorLogging('getCategoryStats', _getCategoryStats);
+
+async function _getPaymentMethodStats(month?: string): Promise<PaymentMethodStat[]> {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('sales')
     .select('payment_method, amount');
@@ -144,10 +147,12 @@ export async function getPaymentMethodStats(month?: string): Promise<PaymentMeth
     .sort((a, b) => b.amount - a.amount);
 }
 
+export const getPaymentMethodStats = withErrorLogging('getPaymentMethodStats', _getPaymentMethodStats);
 
-export async function getChannelStats(month?: string): Promise<ChannelStat[]> {
+
+async function _getChannelStats(month?: string): Promise<ChannelStat[]> {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('sales')
     .select('reservation_channel, amount');
@@ -185,12 +190,14 @@ export async function getChannelStats(month?: string): Promise<ChannelStat[]> {
     .sort((a, b) => b.amount - a.amount);
 }
 
-export async function getCustomerStats(month?: string): Promise<CustomerStat> {
+export const getChannelStats = withErrorLogging('getChannelStats', _getChannelStats);
+
+async function _getCustomerStats(month?: string): Promise<CustomerStat> {
   const supabase = await createClient();
-  
+
   let startDate: string;
   let endDate: string;
-  
+
   if (month) {
     const [year, m] = month.split('-').map(Number);
     startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
@@ -246,10 +253,12 @@ export async function getCustomerStats(month?: string): Promise<CustomerStat> {
   };
 }
 
+export const getCustomerStats = withErrorLogging('getCustomerStats', _getCustomerStats);
 
-export async function getExpenseCategoryStats(month?: string): Promise<ExpenseCategoryStat[]> {
+
+async function _getExpenseCategoryStats(month?: string): Promise<ExpenseCategoryStat[]> {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('expenses')
     .select('category, total_amount');
@@ -284,6 +293,8 @@ export async function getExpenseCategoryStats(month?: string): Promise<ExpenseCa
     .sort((a, b) => b.amount - a.amount);
 }
 
+export const getExpenseCategoryStats = withErrorLogging('getExpenseCategoryStats', _getExpenseCategoryStats);
+
 export interface MonthlySalesTrend {
   month: string;
   label: string;
@@ -291,7 +302,7 @@ export interface MonthlySalesTrend {
   salesCount: number;
 }
 
-export async function getMonthlySalesTrend(months: number = 6): Promise<MonthlySalesTrend[]> {
+async function _getMonthlySalesTrend(months: number = 6): Promise<MonthlySalesTrend[]> {
   const supabase = await createClient();
   const now = new Date();
 
@@ -331,6 +342,8 @@ export async function getMonthlySalesTrend(months: number = 6): Promise<MonthlyS
   return trends;
 }
 
+export const getMonthlySalesTrend = withErrorLogging('getMonthlySalesTrend', _getMonthlySalesTrend);
+
 export interface DailySalesTrend {
   date: string;
   label: string;
@@ -338,12 +351,12 @@ export interface DailySalesTrend {
   salesCount: number;
 }
 
-export async function getDailySalesTrend(month?: string): Promise<DailySalesTrend[]> {
+async function _getDailySalesTrend(month?: string): Promise<DailySalesTrend[]> {
   const supabase = await createClient();
-  
+
   let startDate: string;
   let endDate: string;
-  
+
   if (month) {
     const [year, m] = month.split('-').map(Number);
     startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
@@ -381,3 +394,5 @@ export async function getDailySalesTrend(month?: string): Promise<DailySalesTren
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
+
+export const getDailySalesTrend = withErrorLogging('getDailySalesTrend', _getDailySalesTrend);

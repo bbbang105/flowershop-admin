@@ -9,6 +9,7 @@ import type {
   CustomerStat,
   ExpenseCategoryStat,
 } from './statistics';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 
 export interface DashboardSummary {
   totalAmount: number;
@@ -21,7 +22,7 @@ export interface DashboardSummary {
   pendingAmount: number;
 }
 
-export async function getTodaySummary(): Promise<DashboardSummary> {
+async function _getTodaySummary(): Promise<DashboardSummary> {
   const supabase = await createClient();
   const today = new Date().toISOString().split('T')[0];
 
@@ -45,7 +46,7 @@ export async function getTodaySummary(): Promise<DashboardSummary> {
 
   (sales || []).forEach((sale) => {
     summary.totalAmount += sale.amount;
-    
+
     switch (sale.payment_method) {
       case 'card':
         summary.cardAmount += sale.amount;
@@ -73,8 +74,10 @@ export async function getTodaySummary(): Promise<DashboardSummary> {
   return summary;
 }
 
+export const getTodaySummary = withErrorLogging('getTodaySummary', _getTodaySummary);
 
-export async function getRecentSales(limit: number = 10): Promise<Sale[]> {
+
+async function _getRecentSales(limit: number = 10): Promise<Sale[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -88,7 +91,9 @@ export async function getRecentSales(limit: number = 10): Promise<Sale[]> {
   return data as Sale[];
 }
 
-export async function getTodayReservations(): Promise<Reservation[]> {
+export const getRecentSales = withErrorLogging('getRecentSales', _getRecentSales);
+
+async function _getTodayReservations(): Promise<Reservation[]> {
   const supabase = await createClient();
   const today = new Date().toISOString().split('T')[0];
 
@@ -102,7 +107,9 @@ export async function getTodayReservations(): Promise<Reservation[]> {
   return (data || []) as Reservation[];
 }
 
-export async function getMonthExpenseTotal(month?: string): Promise<number> {
+export const getTodayReservations = withErrorLogging('getTodayReservations', _getTodayReservations);
+
+async function _getMonthExpenseTotal(month?: string): Promise<number> {
   const supabase = await createClient();
 
   let startDate: string;
@@ -128,7 +135,9 @@ export async function getMonthExpenseTotal(month?: string): Promise<number> {
   return (data || []).reduce((sum, e) => sum + e.total_amount, 0);
 }
 
-export async function getMonthSummary(month?: string): Promise<DashboardSummary> {
+export const getMonthExpenseTotal = withErrorLogging('getMonthExpenseTotal', _getMonthExpenseTotal);
+
+async function _getMonthSummary(month?: string): Promise<DashboardSummary> {
   const supabase = await createClient();
 
   let startDate: string;
@@ -154,6 +163,8 @@ export async function getMonthSummary(month?: string): Promise<DashboardSummary>
 
   return buildSummary(sales || []);
 }
+
+export const getMonthSummary = withErrorLogging('getMonthSummary', _getMonthSummary);
 
 // --- 통합 액션 (대시보드 성능 최적화) ---
 
@@ -205,7 +216,7 @@ export interface DashboardTodayData {
 }
 
 /** 오늘 대시보드 데이터를 단일 Server Action으로 조회 (4개 병렬 DB 쿼리) */
-export async function getDashboardTodayData(): Promise<DashboardTodayData> {
+async function _getDashboardTodayData(): Promise<DashboardTodayData> {
   const supabase = await createClient();
   const today = new Date().toISOString().split('T')[0];
 
@@ -229,6 +240,8 @@ export async function getDashboardTodayData(): Promise<DashboardTodayData> {
   };
 }
 
+export const getDashboardTodayData = withErrorLogging('getDashboardTodayData', _getDashboardTodayData);
+
 const PAYMENT_LABELS: Record<string, string> = {
   cash: '현금', card: '카드', transfer: '계좌이체', naverpay: '네이버페이', kakaopay: '카카오페이',
 };
@@ -251,7 +264,7 @@ export interface DashboardMonthData {
 }
 
 /** 월별 대시보드 데이터를 단일 Server Action으로 조회 (2~3개 DB 쿼리) */
-export async function getDashboardMonthData(month?: string): Promise<DashboardMonthData> {
+async function _getDashboardMonthData(month?: string): Promise<DashboardMonthData> {
   const supabase = await createClient();
   const { startDate, endDate } = getMonthRange(month);
 
@@ -348,3 +361,5 @@ export async function getDashboardMonthData(month?: string): Promise<DashboardMo
     expenseStats,
   };
 }
+
+export const getDashboardMonthData = withErrorLogging('getDashboardMonthData', _getDashboardMonthData);
