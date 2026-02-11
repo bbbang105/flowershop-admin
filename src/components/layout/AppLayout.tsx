@@ -43,7 +43,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       )}>
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="p-4 sm:p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8" aria-label="주요 콘텐츠">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>

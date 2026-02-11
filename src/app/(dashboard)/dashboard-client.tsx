@@ -42,14 +42,7 @@ import type {
   ExpenseCategoryStat,
 } from '@/lib/actions/statistics';
 import { getSaleCategories } from '@/lib/actions/sale-settings';
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('ko-KR', {
-    style: 'currency',
-    currency: 'KRW',
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+import { formatCurrency } from '@/lib/utils';
 
 function getMonthOptions() {
   const options = [];
@@ -299,13 +292,13 @@ export function DashboardClient() {
         {/* Today's Reservations */}
         <Card className="overflow-hidden">
           <div className="px-4 py-3 bg-muted/50 border-b border-border flex items-center justify-between">
-            <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+            <h2 className="text-sm font-medium text-foreground flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-brand" />
               오늘 예약
               {reservations.length > 0 && (
                 <span className="text-muted-foreground">({reservations.length}건)</span>
               )}
-            </h3>
+            </h2>
             <Link
               href="/calendar"
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
@@ -381,10 +374,10 @@ export function DashboardClient() {
         {/* Recent Sales */}
         <Card className="overflow-hidden">
           <div className="px-4 py-3 bg-muted/50 border-b border-border flex items-center justify-between">
-            <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+            <h2 className="text-sm font-medium text-foreground flex items-center gap-2">
               <ArrowUpRight className="h-4 w-4 text-brand" />
               최근 매출
-            </h3>
+            </h2>
             <Link
               href="/sales"
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"

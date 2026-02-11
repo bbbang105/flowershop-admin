@@ -48,6 +48,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             size="icon-sm"
             className="lg:hidden shrink-0"
             onClick={onMenuClick}
+            aria-label="메뉴 열기"
           >
             <Menu className="h-4 w-4" />
           </Button>
@@ -65,8 +66,8 @@ export function Header({ onMenuClick }: HeaderProps) {
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
             aria-label="테마 변경"
           >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-[transform,opacity] dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-[transform,opacity] dark:rotate-0 dark:scale-100" />
           </Button>
           <Link href="/settings">
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground" aria-label="설정">

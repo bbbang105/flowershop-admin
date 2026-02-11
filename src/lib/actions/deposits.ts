@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth-guard';
 import type { Sale, DepositStatus } from '@/types/database';
+import { idsSchema, uuidSchema } from '@/lib/validations';
 
 export interface DepositsFilter {
   month?: string;
@@ -54,6 +55,8 @@ export async function getCompletedDeposits(month?: string): Promise<Sale[]> {
 
 export async function confirmDeposit(id: string): Promise<void> {
   await requireAuth();
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -72,8 +75,10 @@ export async function confirmDeposit(id: string): Promise<void> {
 
 export async function confirmMultipleDeposits(ids: string[]): Promise<void> {
   await requireAuth();
+  const parsed = idsSchema.safeParse(ids);
+  if (!parsed.success) throw new Error('올바르지 않은 ID 목록입니다');
   const supabase = await createClient();
-  
+
   const { error } = await supabase
     .from('sales')
     .update({ 
@@ -90,6 +95,8 @@ export async function confirmMultipleDeposits(ids: string[]): Promise<void> {
 
 export async function revertDeposit(id: string): Promise<void> {
   await requireAuth();
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
   const supabase = await createClient();
   
   const { error } = await supabase

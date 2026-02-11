@@ -155,6 +155,7 @@ export function GalleryClient({ initialData, tags: initialTags }: GalleryClientP
           onClick={() => setIsTagModalOpen(true)}
           className="shrink-0"
           title="태그 관리"
+          aria-label="태그 관리"
         >
           <Settings className="w-4 h-4" />
         </Button>

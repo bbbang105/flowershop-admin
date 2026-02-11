@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,8 +16,10 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { createCustomer, updateCustomer, deleteCustomer, getCustomerSales, checkPhoneDuplicate } from '@/lib/actions/customers';
-import { cn, formatPhoneNumber } from '@/lib/utils';
+import { cn, formatPhoneNumber, formatCurrency } from '@/lib/utils';
 import type { Customer, Sale } from '@/types/database';
+import { ExportButton } from '@/components/ui/export-button';
+import type { ExportConfig } from '@/lib/export';
 import type { SaleCategory, PaymentMethod } from '@/lib/actions/sale-settings';
 
 const gradeLabels: Record<string, { label: string; icon: string; color: string; bg: string }> = {
@@ -26,10 +28,6 @@ const gradeLabels: Record<string, { label: string; icon: string; color: string; 
   vip: { label: 'VIP', icon: '👑', color: 'text-purple-600', bg: 'bg-purple-50' },
   blacklist: { label: '블랙', icon: '⚠️', color: 'text-red-600', bg: 'bg-red-50' },
 };
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
-}
 
 interface Props {
   initialCustomers: Customer[];
@@ -115,6 +113,21 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
     const regular = initialCustomers.filter(c => c.grade === 'regular' || c.grade === 'vip').length;
     return { total, regular };
   }, [initialCustomers]);
+
+  const getExportConfig = useCallback((): ExportConfig => ({
+    filename: `고객_${format(new Date(), 'yyyy-MM-dd')}`,
+    title: '고객 목록',
+    columns: [
+      { header: '이름', accessor: (c) => String(c.name || '') },
+      { header: '전화번호', accessor: (c) => String(c.phone || '') },
+      { header: '등급', accessor: (c) => gradeLabels[c.grade as string]?.label || String(c.grade || '') },
+      { header: '구매횟수', accessor: (c) => Number(c.total_purchase_count) || 0 },
+      { header: '총구매금액', accessor: (c) => Number(c.total_purchase_amount) || 0, format: 'currency' },
+      { header: '최근구매일', accessor: (c) => String(c.last_purchase_date || '') },
+      { header: '메모', accessor: (c) => String(c.note || '') },
+    ],
+    data: filteredCustomers,
+  }), [filteredCustomers]);
 
 
   const handleSelectCustomer = async (customer: Customer) => {
@@ -212,10 +225,13 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
           <h1 className="text-xl font-semibold text-foreground tracking-tight">고객 관리</h1>
           <p className="text-sm text-muted-foreground mt-1">고객 정보와 구매 이력을 관리하세요</p>
         </div>
-        <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setPhoneValue(''); setPhoneDuplicate(null); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          고객 등록
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportButton getExportConfig={getExportConfig} />
+          <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setPhoneValue(''); setPhoneDuplicate(null); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            고객 등록
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

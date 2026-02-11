@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,12 +18,10 @@ import { toast } from 'sonner';
 import { createExpense, updateExpense, deleteExpense } from '@/lib/actions/expenses';
 import { ExpenseCategory, ExpensePaymentMethod, getExpenseCategories, getExpensePaymentMethods } from '@/lib/actions/expense-settings';
 import { ExpenseSettingsModal } from '@/components/expenses/ExpenseSettingsModal';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import type { Expense } from '@/types/database';
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
-}
+import { ExportButton } from '@/components/ui/export-button';
+import type { ExportConfig } from '@/lib/export';
 
 const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) => 2024 + i);
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -124,6 +122,22 @@ export function ExpensesClient({
     return { total, byCategory };
   }, [filteredExpenses]);
 
+  const getExportConfig = useCallback((): ExportConfig => ({
+    filename: `지출_${currentYear}-${String(currentMonth).padStart(2, '0')}`,
+    title: `지출 내역 (${currentYear}년 ${currentMonth}월)`,
+    columns: [
+      { header: '날짜', accessor: (e) => String(e.date || '') },
+      { header: '카테고리', accessor: (e) => categoryLabels[e.category as string] || String(e.category || '') },
+      { header: '금액', accessor: (e) => Number(e.total_amount) || 0, format: 'currency' },
+      { header: '결제방법', accessor: (e) => paymentLabels[e.payment_method as string] || String(e.payment_method || '') },
+      { header: '수량', accessor: (e) => Number(e.quantity) || 0 },
+      { header: '품목명', accessor: (e) => String(e.item_name || '') },
+      { header: '거래처', accessor: (e) => String(e.vendor || '') },
+      { header: '비고', accessor: (e) => String(e.note || '') },
+    ],
+    data: filteredExpenses,
+  }), [filteredExpenses, currentYear, currentMonth, categoryLabels, paymentLabels]);
+
   const handleSelectExpense = (expense: Expense) => {
     setSelectedExpense(expense);
   };
@@ -210,10 +224,13 @@ export function ExpensesClient({
           <h1 className="text-xl font-semibold text-foreground tracking-tight">지출 관리</h1>
           <p className="text-sm text-muted-foreground mt-1">지출 내역을 등록하고 관리하세요</p>
         </div>
-        <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setSelectedPaymentMethod(payments[0]?.value || 'card'); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          지출 등록
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportButton getExportConfig={getExportConfig} />
+          <Button onClick={() => { setIsFormOpen(true); setNoteValue(''); setSelectedPaymentMethod(payments[0]?.value || 'card'); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            지출 등록
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -360,6 +377,7 @@ export function ExpensesClient({
       <Card className="overflow-hidden hidden md:block">
         <CardContent className="p-0">
           <Table>
+            <caption className="sr-only">지출 내역 목록</caption>
             <TableHeader>
               <TableRow className="bg-muted/40">
                 <TableHead className="w-[120px] pl-6">날짜</TableHead>

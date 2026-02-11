@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth-guard';
 import type { Customer, CustomerGrade } from '@/types/database';
-import { customerSchema, uuidSchema, searchQuerySchema } from '@/lib/validations';
+import { customerSchema, uuidSchema, searchQuerySchema, customerGradeSchema } from '@/lib/validations';
 
 export async function getCustomers() {
   const supabase = await createClient();
@@ -171,30 +171,38 @@ export async function createCustomer(formData: FormData) {
 
 export async function updateCustomer(id: string, formData: FormData) {
   await requireAuth();
-  const supabase = await createClient();
-  
-  const updates: Record<string, any> = {};
-  const fields = ['name', 'phone', 'grade', 'note'];
-  
-  fields.forEach(field => {
-    const value = formData.get(field);
-    if (value !== null) {
-      updates[field] = value || null;
-    }
+
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
+
+  const parsed = customerSchema.partial().safeParse({
+    name: formData.get('name') || undefined,
+    phone: formData.get('phone') || undefined,
+    grade: formData.get('grade') || undefined,
+    note: formData.get('note') || null,
   });
-  
-  const { error } = await supabase.from('customers').update(updates).eq('id', id);
+  if (!parsed.success) {
+    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('customers').update(parsed.data).eq('id', id);
   if (error) throw error;
-  
+
   revalidatePath('/customers');
   revalidatePath(`/customers/${id}`);
 }
 
 export async function updateCustomerGrade(id: string, grade: CustomerGrade) {
   await requireAuth();
+
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
+  const gradeParsed = customerGradeSchema.safeParse(grade);
+  if (!gradeParsed.success) throw new Error('올바르지 않은 등급입니다');
+
   const supabase = await createClient();
-  
-  const { error } = await supabase.from('customers').update({ grade }).eq('id', id);
+  const { error } = await supabase.from('customers').update({ grade: gradeParsed.data }).eq('id', id);
   if (error) throw error;
   
   revalidatePath('/customers');
