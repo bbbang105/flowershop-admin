@@ -7,6 +7,14 @@ import { Toaster } from "@/components/ui/sonner";
 export const metadata: Metadata = {
   title: "헤이즐 어드민 | 꽃집 관리 시스템",
   description: "꽃집 매출, 지출, 고객을 쉽게 관리하세요",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "헤이즐",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({
@@ -17,6 +25,8 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
+        <meta name="theme-color" content="#E5614E" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.svg" />
         <link
           rel="stylesheet"
           as="style"

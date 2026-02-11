@@ -61,6 +61,7 @@ export const reservationSchema = z.object({
   description: z.string().max(1000).optional(),
   estimated_amount: z.number().int().min(0).max(100_000_000).optional(),
   status: z.enum(['pending', 'confirmed', 'completed', 'cancelled']).optional(),
+  reminder_date: dateSchema.nullable().optional(),
 });
 
 // 카테고리 설정

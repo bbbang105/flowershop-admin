@@ -159,6 +159,7 @@ export interface Reservation {
   status: ReservationStatus;
   sale_id: string | null;
   estimated_amount: number;
+  reminder_date: string | null;
   created_at: string;
   updated_at: string;
 }

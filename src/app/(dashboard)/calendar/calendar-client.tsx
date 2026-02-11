@@ -16,7 +16,7 @@ import {
   isToday,
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, X, Pencil, Trash2, Loader2, ShoppingBag, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Pencil, Trash2, Loader2, ShoppingBag, ExternalLink, BellRing } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -95,6 +95,7 @@ export function CalendarClient() {
     description: '',
     estimated_amount: '',
     status: 'pending' as ReservationStatus,
+    reminder_date: '',
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -277,6 +278,7 @@ export function CalendarClient() {
       description: '',
       estimated_amount: '',
       status: 'pending',
+      reminder_date: '',
     });
     setEditingId(null);
     setShowForm(false);
@@ -292,6 +294,7 @@ export function CalendarClient() {
       description: reservation.description || '',
       estimated_amount: reservation.estimated_amount ? String(reservation.estimated_amount) : '',
       status: reservation.status as ReservationStatus,
+      reminder_date: reservation.reminder_date || '',
     });
     setShowForm(true);
   }
@@ -316,6 +319,7 @@ export function CalendarClient() {
         description: formData.description || null,
         estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : 0,
         status: formData.status,
+        reminder_date: formData.reminder_date || null,
       });
       if (result.success) {
         toast.success('예약이 수정되었습니다');
@@ -334,6 +338,7 @@ export function CalendarClient() {
         estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : undefined,
         customer_phone: formData.customer_phone || undefined,
         status: formData.status,
+        reminder_date: formData.reminder_date || null,
       });
       if (result.success) {
         toast.success('예약이 등록되었습니다');
@@ -567,6 +572,20 @@ export function CalendarClient() {
                     <p className="text-[10px] text-muted-foreground">대기 → 확정 → 완료 순으로 변경해주세요</p>
                   </div>
                   <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      <BellRing className="w-3 h-3 inline mr-1" />
+                      리마인더 알림
+                    </Label>
+                    <Input
+                      type="date"
+                      value={formData.reminder_date}
+                      onChange={(e) => setFormData({ ...formData, reminder_date: e.target.value })}
+                      className="h-8 text-sm"
+                      aria-label="리마인더 알림 날짜"
+                    />
+                    <p className="text-[10px] text-muted-foreground">설정한 날짜 오전 8시에 푸시 알림을 받아요</p>
+                  </div>
+                  <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">메모</Label>
                     <textarea
                       value={formData.description}
@@ -636,6 +655,12 @@ export function CalendarClient() {
                         )}
                         {r.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.description}</p>
+                        )}
+                        {r.reminder_date && (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <BellRing className="w-3 h-3" />
+                            {r.reminder_date} 알림
+                          </p>
                         )}
 
                         {/* 매출 등록 버튼 또는 매출 확인 링크 */}
