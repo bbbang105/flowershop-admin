@@ -106,7 +106,7 @@
   --secondary: #2D2D2A;
   --secondary-foreground: #EDEDEC;
   --muted: #2D2D2A;
-  --muted-foreground: #8B8B85;
+  --muted-foreground: #9B9B95;
   --accent: #2D2D2A;
   --accent-foreground: #EDEDEC;
   --destructive: #E5484D;
@@ -147,6 +147,12 @@
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }
 

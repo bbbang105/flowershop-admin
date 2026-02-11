@@ -18,14 +18,10 @@ import { toast } from 'sonner';
 import { createExpense, updateExpense, deleteExpense } from '@/lib/actions/expenses';
 import { ExpenseCategory, ExpensePaymentMethod, getExpenseCategories, getExpensePaymentMethods } from '@/lib/actions/expense-settings';
 import { ExpenseSettingsModal } from '@/components/expenses/ExpenseSettingsModal';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import type { Expense } from '@/types/database';
 import { ExportButton } from '@/components/ui/export-button';
 import type { ExportConfig } from '@/lib/export';
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
-}
 
 const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) => 2024 + i);
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -139,7 +135,7 @@ export function ExpensesClient({
       { header: '거래처', accessor: (e) => String(e.vendor || '') },
       { header: '비고', accessor: (e) => String(e.note || '') },
     ],
-    data: filteredExpenses as unknown as Record<string, unknown>[],
+    data: filteredExpenses,
   }), [filteredExpenses, currentYear, currentMonth, categoryLabels, paymentLabels]);
 
   const handleSelectExpense = (expense: Expense) => {
@@ -381,6 +377,7 @@ export function ExpensesClient({
       <Card className="overflow-hidden hidden md:block">
         <CardContent className="p-0">
           <Table>
+            <caption className="sr-only">지출 내역 목록</caption>
             <TableHeader>
               <TableRow className="bg-muted/40">
                 <TableHead className="w-[120px] pl-6">날짜</TableHead>

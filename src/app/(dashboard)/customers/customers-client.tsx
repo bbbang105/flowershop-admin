@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { createCustomer, updateCustomer, deleteCustomer, getCustomerSales, checkPhoneDuplicate } from '@/lib/actions/customers';
-import { cn, formatPhoneNumber } from '@/lib/utils';
+import { cn, formatPhoneNumber, formatCurrency } from '@/lib/utils';
 import type { Customer, Sale } from '@/types/database';
 import { ExportButton } from '@/components/ui/export-button';
 import type { ExportConfig } from '@/lib/export';
@@ -28,10 +28,6 @@ const gradeLabels: Record<string, { label: string; icon: string; color: string; 
   vip: { label: 'VIP', icon: '👑', color: 'text-purple-600', bg: 'bg-purple-50' },
   blacklist: { label: '블랙', icon: '⚠️', color: 'text-red-600', bg: 'bg-red-50' },
 };
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
-}
 
 interface Props {
   initialCustomers: Customer[];
@@ -130,7 +126,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
       { header: '최근구매일', accessor: (c) => String(c.last_purchase_date || '') },
       { header: '메모', accessor: (c) => String(c.note || '') },
     ],
-    data: filteredCustomers as unknown as Record<string, unknown>[],
+    data: filteredCustomers,
   }), [filteredCustomers]);
 
 

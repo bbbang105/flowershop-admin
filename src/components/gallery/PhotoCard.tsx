@@ -82,7 +82,7 @@ export function PhotoCard({ card, tagColorMap, onClick }: PhotoCardProps) {
 
   return (
     <Card
-      className="group cursor-pointer overflow-hidden hover:shadow-lg transition-all"
+      className="group cursor-pointer overflow-hidden hover:shadow-lg transition-shadow"
       onClick={onClick}
     >
       <div className="relative aspect-square bg-muted overflow-hidden rounded-t-lg">

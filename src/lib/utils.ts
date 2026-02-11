@@ -68,6 +68,15 @@ export function calculateSalesSummary(sales: Sale[]): SalesSummary {
   }, { total: 0, card: 0, naverpay: 0, transfer: 0, cash: 0, count: 0 });
 }
 
+// 통화 포맷팅 (₩1,000,000 형태)
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 // 전화번호 포맷팅 (010-1234-5678 형태)
 export function formatPhoneNumber(value: string): string {
   const numbers = value.replace(/[^0-9]/g, '');

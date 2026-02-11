@@ -134,7 +134,7 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-full border-r border-sidebar-border bg-sidebar transition-all duration-200 ease-in-out',
+          'fixed left-0 top-0 z-50 h-full border-r border-sidebar-border bg-sidebar transition-[width,transform] duration-200 ease-in-out',
           isCollapsed ? 'w-16' : 'w-60',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           'lg:translate-x-0'
@@ -154,13 +154,13 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
                 <span className="text-base font-bold text-foreground truncate">Hazel</span>
               )}
             </Link>
-            <Button variant="ghost" size="icon-sm" className="lg:hidden shrink-0" onClick={onClose}>
+            <Button variant="ghost" size="icon-sm" className="lg:hidden shrink-0" onClick={onClose} aria-label="사이드바 닫기">
               <X className="h-4 w-4" />
             </Button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto py-4">
+          <nav className="flex-1 overflow-y-auto py-4" aria-label="주요 네비게이션">
             {/* Dashboard (standalone) */}
             <div className={cn('mb-3', isCollapsed ? 'px-2' : 'px-3')}>
               <NavLink
@@ -227,6 +227,7 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
                   <button
                     onClick={() => signOut()}
                     className="flex items-center justify-center rounded-lg text-[13px] font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors w-full mt-1 px-2 py-2.5"
+                    aria-label="로그아웃"
                   >
                     <LogOut className="h-4 w-4 shrink-0" />
                   </button>
@@ -248,6 +249,7 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
             {/* Collapse toggle (desktop only) */}
             <button
               onClick={onToggleCollapse}
+              aria-label={isCollapsed ? '사이드바 펼치기' : '사이드바 접기'}
               className={cn(
                 'hidden lg:flex items-center gap-3 rounded-lg text-[13px] font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors w-full mt-1',
                 isCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'

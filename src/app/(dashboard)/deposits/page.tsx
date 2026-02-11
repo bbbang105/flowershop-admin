@@ -41,10 +41,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { getDeposits, confirmMultipleDeposits, revertDeposit } from '@/lib/actions/deposits';
 import type { Sale } from '@/types/database';
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
-}
+import { formatCurrency } from '@/lib/utils';
 
 function getMonthOptions() {
   const options = [];

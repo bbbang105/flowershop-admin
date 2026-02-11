@@ -1,14 +1,15 @@
-export interface ExportColumn {
+export interface ExportColumn<T = Record<string, unknown>> {
   header: string;
-  accessor: (row: Record<string, unknown>) => string | number;
+  accessor: (row: T) => string | number;
   format?: 'currency' | 'date' | 'text';
 }
 
-export interface ExportConfig {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface ExportConfig<T = any> {
   filename: string;
   title?: string;
-  columns: ExportColumn[];
-  data: Record<string, unknown>[];
+  columns: ExportColumn<T>[];
+  data: T[];
 }
 
 function formatCellValue(value: string | number, format?: string): string {
@@ -37,7 +38,7 @@ function escapeCSVField(value: string): string {
   return value;
 }
 
-export function exportToCSV(config: ExportConfig): void {
+export function exportToCSV<T>(config: ExportConfig<T>): void {
   const BOM = '\uFEFF';
   const headers = config.columns.map(c => escapeCSVField(c.header));
 
@@ -54,7 +55,7 @@ export function exportToCSV(config: ExportConfig): void {
   triggerDownload(blob, `${config.filename}.csv`);
 }
 
-export async function exportToExcel(config: ExportConfig): Promise<void> {
+export async function exportToExcel<T>(config: ExportConfig<T>): Promise<void> {
   const ExcelJS = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(config.title || 'Sheet1');
@@ -119,7 +120,7 @@ export async function exportToExcel(config: ExportConfig): Promise<void> {
   triggerDownload(blob, `${config.filename}.xlsx`);
 }
 
-export async function exportToPDF(config: ExportConfig): Promise<void> {
+export async function exportToPDF<T>(config: ExportConfig<T>): Promise<void> {
   const { default: jsPDF } = await import('jspdf');
   const autoTable = (await import('jspdf-autotable')).default;
   const { font: nanumGothicBase64 } = await import('@/lib/fonts/nanumgothic-normal');

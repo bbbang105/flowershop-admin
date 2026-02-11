@@ -20,9 +20,8 @@ import { SalePhotoModal } from '@/components/sales/SalePhotoModal';
 import { SalesSettingsModal } from '@/components/sales/SalesSettingsModal';
 import { CustomerAutocomplete } from '@/components/sales/CustomerAutocomplete';
 import { Textarea } from '@/components/ui/textarea';
-import { cn, formatPhoneNumber } from '@/lib/utils';
+import { cn, formatPhoneNumber, calculateSalesSummary, formatCurrency } from '@/lib/utils';
 import type { PhotoCard, Sale, CardCompanySetting } from '@/types/database';
-import { calculateSalesSummary } from '@/lib/utils';
 import { SaleCategory, PaymentMethod, getSaleCategories, getPaymentMethods } from '@/lib/actions/sale-settings';
 import { getCardCompanySettings } from '@/lib/actions/settings';
 import { ExportButton } from '@/components/ui/export-button';
@@ -31,10 +30,6 @@ import type { ExportConfig } from '@/lib/export';
 const channelLabels: Record<string, string> = {
   phone: '전화', kakaotalk: '카카오톡', naver_booking: '네이버예약', road: '로드', other: '기타',
 };
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
-}
 
 // Year options: 2024 ~ 2030
 const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) => 2024 + i);
@@ -158,7 +153,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
       { header: '고객명', accessor: (s) => String(s.customer_name || '') },
       { header: '비고', accessor: (s) => String(s.note || '') },
     ],
-    data: filteredSales as unknown as Record<string, unknown>[],
+    data: filteredSales,
   }), [filteredSales, currentYear, currentMonth, categoryLabels, paymentLabels]);
 
   // 매출 상세 선택 시 사진 로드
@@ -452,6 +447,7 @@ export function SalesClient({ initialSales, currentYear, currentMonth, initialCa
       <Card className="overflow-hidden hidden md:block">
         <CardContent className="p-0">
           <Table>
+            <caption className="sr-only">매출 내역 목록</caption>
             <TableHeader>
               <TableRow className="bg-muted/40">
                 <TableHead className="w-[120px] pl-6">날짜</TableHead>
