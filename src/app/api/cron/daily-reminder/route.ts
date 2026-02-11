@@ -2,12 +2,16 @@ import { NextResponse } from 'next/server';
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
-// VAPID 설정
-webpush.setVapidDetails(
-  'mailto:admin@hazel.local',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+// VAPID 설정 (lazy 초기화)
+let vapidConfigured = false;
+function ensureVapid() {
+  if (vapidConfigured) return;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) throw new Error('VAPID 키가 설정되지 않았습니다');
+  webpush.setVapidDetails('mailto:admin@hazel.local', publicKey, privateKey);
+  vapidConfigured = true;
+}
 
 // Cron 보안: CRON_SECRET으로 인증
 function verifyCronAuth(request: Request): boolean {
@@ -36,6 +40,8 @@ export async function GET(request: Request) {
   }
 
   try {
+    ensureVapid();
+
     // Service role key로 Supabase 접근 (RLS 우회)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -5,12 +5,16 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth-guard';
 import { withErrorLogging } from '@/lib/errors';
 
-// VAPID 설정
-webpush.setVapidDetails(
-  'mailto:admin@hazel.local',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+// VAPID 설정 (lazy 초기화 - 빌드 시 환경변수 없을 수 있음)
+let vapidConfigured = false;
+function ensureVapid() {
+  if (vapidConfigured) return;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) throw new Error('VAPID 키가 설정되지 않았습니다');
+  webpush.setVapidDetails('mailto:admin@hazel.local', publicKey, privateKey);
+  vapidConfigured = true;
+}
 
 // ─── 타입 ──────────────────────────────────────────────────────
 
@@ -106,6 +110,7 @@ async function _sendPushToUser(
   userId: string,
   payload: NotificationPayload,
 ): Promise<{ success: boolean; sent: number; failed: number }> {
+  ensureVapid();
   const supabase = await createClient();
 
   const { data: subscriptions } = await supabase
@@ -159,6 +164,7 @@ export const sendPushToUser = withErrorLogging('sendPushToUser', _sendPushToUser
 async function _sendPushToAllUsers(
   payload: NotificationPayload,
 ): Promise<{ success: boolean; sent: number; failed: number }> {
+  ensureVapid();
   const supabase = await createClient();
 
   const { data: subscriptions } = await supabase
