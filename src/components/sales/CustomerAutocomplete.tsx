@@ -164,7 +164,7 @@ export function CustomerAutocomplete({
                   onClick={handleNewCustomer}
                 >
                   <Plus className="w-4 h-4 flex-shrink-0" />
-                  <span className="text-sm font-medium">"{inputValue}" 새 고객으로 등록</span>
+                  <span className="text-sm font-medium">&ldquo;{inputValue}&rdquo; 새 고객으로 등록</span>
                 </button>
               )}
             </>

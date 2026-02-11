@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors'
+import { withErrorLogging } from '@/lib/errors'
 
 async function _signOut() {
   const supabase = await createClient()

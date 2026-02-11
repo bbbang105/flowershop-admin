@@ -1,9 +1,17 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it } from 'vitest'
 import * as fc from 'fast-check'
-import type { PhotoCard, PhotoTag } from '@/types/database'
+import type { PhotoCard, PhotoTag, PhotoFile } from '@/types/database'
 
 // Constants
 const MAX_PHOTOS_PER_CARD = 10
+
+// Helper: Generate arbitrary PhotoFile
+const arbitraryPhotoFile = (): fc.Arbitrary<PhotoFile> => {
+  return fc.record({
+    url: fc.webUrl(),
+    originalName: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
+  })
+}
 
 // Helper: Generate arbitrary PhotoTag
 const arbitraryPhotoTag = (): fc.Arbitrary<PhotoTag> => {
@@ -22,7 +30,7 @@ const arbitraryPhotoCard = (): fc.Arbitrary<PhotoCard> => {
     title: fc.string({ minLength: 1, maxLength: 255 }).filter(s => s.trim().length > 0),
     description: fc.option(fc.string({ maxLength: 500 }), { nil: null }),
     tags: fc.array(fc.string({ minLength: 1, maxLength: 50 }), { maxLength: 10 }),
-    photos: fc.array(fc.webUrl(), { minLength: 0, maxLength: MAX_PHOTOS_PER_CARD }),
+    photos: fc.array(arbitraryPhotoFile(), { minLength: 0, maxLength: MAX_PHOTOS_PER_CARD }),
     sale_id: fc.option(fc.uuid(), { nil: null }),
     created_at: fc.constant(new Date().toISOString()),
     updated_at: fc.constant(new Date().toISOString()),
@@ -30,7 +38,7 @@ const arbitraryPhotoCard = (): fc.Arbitrary<PhotoCard> => {
 }
 
 // Validation functions (mirroring server-side logic)
-function validatePhotoCount(photos: string[]): boolean {
+function validatePhotoCount(photos: PhotoFile[]): boolean {
   return photos.length >= 0 && photos.length <= MAX_PHOTOS_PER_CARD
 }
 
@@ -47,7 +55,7 @@ function filterCardsByTag(cards: PhotoCard[], tag: string | null): PhotoCard[] {
 function removePhotoFromCard(card: PhotoCard, photoUrl: string): PhotoCard {
   return {
     ...card,
-    photos: card.photos.filter(p => p !== photoUrl),
+    photos: card.photos.filter(p => p.url !== photoUrl),
   }
 }
 
@@ -55,7 +63,7 @@ describe('Photo Gallery - Photo Count Limit', () => {
   /**
    * **Feature: photo-gallery, Property 1: Photo count limit enforcement**
    * **Validates: Requirements 1.2, 1.3, 5.2**
-   * 
+   *
    * For any PhotoCard, the photos array length SHALL be between 0 and 10 inclusive.
    */
   it('Property 1: photo count should always be between 0 and 10', () => {
@@ -73,12 +81,12 @@ describe('Photo Gallery - Photo Count Limit', () => {
   it('Property 1 (boundary): adding photos beyond 10 should be rejected', () => {
     fc.assert(
       fc.property(
-        fc.array(fc.webUrl(), { minLength: 0, maxLength: MAX_PHOTOS_PER_CARD }),
-        fc.array(fc.webUrl(), { minLength: 1, maxLength: 5 }),
+        fc.array(arbitraryPhotoFile(), { minLength: 0, maxLength: MAX_PHOTOS_PER_CARD }),
+        fc.array(arbitraryPhotoFile(), { minLength: 1, maxLength: 5 }),
         (existingPhotos, newPhotos) => {
           const totalCount = existingPhotos.length + newPhotos.length
           const wouldExceedLimit = totalCount > MAX_PHOTOS_PER_CARD
-          
+
           if (wouldExceedLimit) {
             // Should reject - validation should fail
             return !validatePhotoCount([...existingPhotos, ...newPhotos])
@@ -98,7 +106,7 @@ describe('Photo Gallery - Card Creation Validation', () => {
   /**
    * **Feature: photo-gallery, Property 2: Card creation validation**
    * **Validates: Requirements 1.4, 1.5**
-   * 
+   *
    * For any PhotoCard creation request, if the title is empty or whitespace-only,
    * the system SHALL reject the request.
    */
@@ -132,7 +140,7 @@ describe('Photo Gallery - Card Creation Validation', () => {
         fc.string({ minLength: 1, maxLength: 255 }).filter(s => s.trim().length > 0),
         fc.option(fc.string(), { nil: null }),
         fc.array(fc.string(), { maxLength: 10 }),
-        (title, description, tags) => {
+        (title, _description, _tags) => {
           // Card should be valid regardless of description/tags presence
           const isValid = validateTitle(title)
           return isValid === true
@@ -148,7 +156,7 @@ describe('Photo Gallery - Tag Filtering', () => {
   /**
    * **Feature: photo-gallery, Property 3: Tag filtering correctness**
    * **Validates: Requirements 3.2**
-   * 
+   *
    * For any tag filter selection and set of PhotoCards, the filtered result
    * SHALL contain only cards where the tags array includes the selected tag.
    */
@@ -200,7 +208,7 @@ describe('Photo Gallery - Photo Deletion', () => {
   /**
    * **Feature: photo-gallery, Property 6: Photo deletion consistency**
    * **Validates: Requirements 5.3**
-   * 
+   *
    * For any photo deletion operation on a PhotoCard, the card's photos array
    * length SHALL decrease by exactly 1, and the deleted photo URL SHALL no
    * longer appear in the array.
@@ -210,7 +218,7 @@ describe('Photo Gallery - Photo Deletion', () => {
       fc.property(
         arbitraryPhotoCard().filter(card => card.photos.length > 0),
         (card) => {
-          const photoToDelete = card.photos[0]
+          const photoToDelete = card.photos[0].url
           const updatedCard = removePhotoFromCard(card, photoToDelete)
           return updatedCard.photos.length === card.photos.length - 1
         }
@@ -224,9 +232,9 @@ describe('Photo Gallery - Photo Deletion', () => {
       fc.property(
         arbitraryPhotoCard().filter(card => card.photos.length > 0),
         (card) => {
-          const photoToDelete = card.photos[0]
+          const photoToDelete = card.photos[0].url
           const updatedCard = removePhotoFromCard(card, photoToDelete)
-          return !updatedCard.photos.includes(photoToDelete)
+          return !updatedCard.photos.some(p => p.url === photoToDelete)
         }
       ),
       { numRuns: 100 }
@@ -238,10 +246,10 @@ describe('Photo Gallery - Photo Deletion', () => {
       fc.property(
         arbitraryPhotoCard().filter(card => card.photos.length > 1),
         (card) => {
-          const photoToDelete = card.photos[0]
+          const photoToDelete = card.photos[0].url
           const remainingPhotos = card.photos.slice(1)
           const updatedCard = removePhotoFromCard(card, photoToDelete)
-          return remainingPhotos.every(p => updatedCard.photos.includes(p))
+          return remainingPhotos.every(p => updatedCard.photos.some(up => up.url === p.url))
         }
       ),
       { numRuns: 100 }
@@ -254,16 +262,14 @@ describe('Photo Gallery - Tag Uniqueness', () => {
   /**
    * **Feature: photo-gallery, Property: Tag name uniqueness**
    * **Validates: Requirements 3.1**
-   * 
+   *
    * For any set of tags, each tag name should be unique.
    */
   it('Tag names in a collection should be unique', () => {
     fc.assert(
       fc.property(
         fc.array(arbitraryPhotoTag(), { minLength: 0, maxLength: 20 }),
-        (tags) => {
-          const names = tags.map(t => t.name)
-          const uniqueNames = new Set(names)
+        () => {
           // This tests the invariant that we expect unique names
           // In practice, DB constraint enforces this
           return true // Always passes as this is a design constraint
@@ -278,7 +284,7 @@ describe('Photo Gallery - Sale Link Integrity', () => {
   /**
    * **Feature: photo-gallery, Property 5: Sale link integrity**
    * **Validates: Requirements 4.1, 4.2**
-   * 
+   *
    * For any PhotoCard with a non-null sale_id, the detail view SHALL display
    * the linked sale information.
    */

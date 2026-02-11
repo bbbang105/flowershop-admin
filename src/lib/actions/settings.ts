@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { CardCompanySetting } from '@/types/database';
 import { requireAuth } from '@/lib/auth-guard';
-import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
+import { withErrorLogging } from '@/lib/errors';
 
 // ============ Card Company Settings ============
 
