@@ -373,15 +373,10 @@ export async function downloadAllPhotos(cardId: string): Promise<{ urls: Array<{
     return { urls: [] };
   }
   
-  const downloadUrls: Array<{ url: string; filename: string }> = [];
-  
-  for (const photo of photos) {
-    const result = await downloadPhoto(photo);
-    if (result) {
-      downloadUrls.push(result);
-    }
-  }
-  
+  // 병렬 다운로드 (순차 → Promise.all)
+  const results = await Promise.all(photos.map((photo) => downloadPhoto(photo)));
+  const downloadUrls = results.filter((r): r is { url: string; filename: string } => r !== null);
+
   return { urls: downloadUrls };
 }
 
