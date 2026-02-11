@@ -153,9 +153,10 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
       setIsFormOpen(false);
       router.refresh();
       toast.success('고객이 등록되었습니다');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to create customer:', error);
-      if (error?.code === '23505') {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('이미') || (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === '23505')) {
         toast.error('이미 등록된 연락처입니다');
       } else {
         toast.error('고객 등록에 실패했습니다');
@@ -176,9 +177,10 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
       setSelectedCustomer(null);
       router.refresh();
       toast.success('고객 정보가 수정되었습니다');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update customer:', error);
-      if (error?.code === '23505') {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('이미') || (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === '23505')) {
         toast.error('이미 등록된 연락처입니다');
       } else {
         toast.error('고객 수정에 실패했습니다');

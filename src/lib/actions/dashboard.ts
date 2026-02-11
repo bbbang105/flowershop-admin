@@ -9,7 +9,7 @@ import type {
   CustomerStat,
   ExpenseCategoryStat,
 } from './statistics';
-import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
+import { withErrorLogging } from '@/lib/errors';
 
 export interface DashboardSummary {
   totalAmount: number;

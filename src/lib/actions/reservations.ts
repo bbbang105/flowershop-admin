@@ -6,7 +6,7 @@ import { requireAuth } from '@/lib/auth-guard';
 import { createSale } from './sales';
 import type { Reservation, ReservationStatus, Sale } from '@/types/database';
 import { reservationSchema, uuidSchema } from '@/lib/validations';
-import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
+import { withErrorLogging } from '@/lib/errors';
 
 async function _getReservations(month: string): Promise<{ success: boolean; data?: Reservation[]; error?: string }> {
   const supabase = await createClient();
