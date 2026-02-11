@@ -20,20 +20,10 @@ import Link from 'next/link';
 import { RESERVATION_STATUS } from '@/types/database';
 import type { Reservation, Sale } from '@/types/database';
 import {
-  getTodaySummary,
-  getTodayReservations,
-  getRecentSales,
-  getMonthSummary,
-  getMonthExpenseTotal,
+  getDashboardTodayData,
+  getDashboardMonthData,
 } from '@/lib/actions/dashboard';
 import type { DashboardSummary } from '@/lib/actions/dashboard';
-import {
-  getCategoryStats,
-  getPaymentMethodStats,
-  getChannelStats,
-  getCustomerStats,
-  getExpenseCategoryStats,
-} from '@/lib/actions/statistics';
 import type {
   CategoryStat,
   PaymentMethodStat,
@@ -41,7 +31,6 @@ import type {
   CustomerStat,
   ExpenseCategoryStat,
 } from '@/lib/actions/statistics';
-import { getSaleCategories } from '@/lib/actions/sale-settings';
 import { formatCurrency } from '@/lib/utils';
 
 function getMonthOptions() {
@@ -123,21 +112,16 @@ export function DashboardClient() {
 
   const statusMap = useMemo(() => new Map(RESERVATION_STATUS.map((s) => [s.value, s])), []);
 
-  // Fetch today data (once)
+  // Fetch today data (once) - 단일 Server Action (기존 4개 → 1개 HTTP)
   useEffect(() => {
     async function fetchTodayData() {
       setIsTodayLoading(true);
       try {
-        const [summary, todayRes, recent, saleCategories] = await Promise.all([
-          getTodaySummary(),
-          getTodayReservations(),
-          getRecentSales(5),
-          getSaleCategories(),
-        ]);
-        setTodaySummary(summary);
-        setReservations(todayRes);
-        setRecentSales(recent);
-        setCategoryLabels(Object.fromEntries(saleCategories.map((c) => [c.value, c.label])));
+        const data = await getDashboardTodayData();
+        setTodaySummary(data.summary);
+        setReservations(data.reservations);
+        setRecentSales(data.recentSales);
+        setCategoryLabels(Object.fromEntries(data.saleCategories.map((c) => [c.value, c.label])));
       } catch (error) {
         console.error('Failed to fetch today data:', error);
       } finally {
@@ -147,27 +131,19 @@ export function DashboardClient() {
     fetchTodayData();
   }, []);
 
-  // Fetch monthly data (when month changes)
+  // Fetch monthly data (when month changes) - 단일 Server Action (기존 7개 → 1개 HTTP)
   useEffect(() => {
     async function fetchMonthData() {
       setIsMonthLoading(true);
       try {
-        const [summary, expTotal, cats, payments, channels, customers, expenses] = await Promise.all([
-          getMonthSummary(selectedMonth),
-          getMonthExpenseTotal(selectedMonth),
-          getCategoryStats(selectedMonth),
-          getPaymentMethodStats(selectedMonth),
-          getChannelStats(selectedMonth),
-          getCustomerStats(selectedMonth),
-          getExpenseCategoryStats(selectedMonth),
-        ]);
-        setMonthSummary(summary);
-        setMonthExpenseTotal(expTotal);
-        setCategoryStats(cats);
-        setPaymentStats(payments);
-        setChannelStats(channels);
-        setCustomerStats(customers);
-        setExpenseStats(expenses);
+        const data = await getDashboardMonthData(selectedMonth);
+        setMonthSummary(data.summary);
+        setMonthExpenseTotal(data.expenseTotal);
+        setCategoryStats(data.categoryStats);
+        setPaymentStats(data.paymentStats);
+        setChannelStats(data.channelStats);
+        setCustomerStats(data.customerStats);
+        setExpenseStats(data.expenseStats);
       } catch (error) {
         console.error('Failed to fetch month data:', error);
       } finally {
