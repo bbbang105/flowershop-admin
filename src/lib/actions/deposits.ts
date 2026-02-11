@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth-guard';
 import type { Sale, DepositStatus } from '@/types/database';
 import { idsSchema, uuidSchema } from '@/lib/validations';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 
 export interface DepositsFilter {
   month?: string;
@@ -12,7 +13,7 @@ export interface DepositsFilter {
   cardCompany?: string;
 }
 
-export async function getDeposits(filter: DepositsFilter = {}): Promise<Sale[]> {
+async function _getDeposits(filter: DepositsFilter = {}): Promise<Sale[]> {
   const supabase = await createClient();
   
   let query = supabase
@@ -44,19 +45,25 @@ export async function getDeposits(filter: DepositsFilter = {}): Promise<Sale[]> 
   return data as Sale[];
 }
 
-export async function getPendingDeposits(month?: string): Promise<Sale[]> {
-  return getDeposits({ month, status: 'pending' });
+export const getDeposits = withErrorLogging('getDeposits', _getDeposits);
+
+async function _getPendingDeposits(month?: string): Promise<Sale[]> {
+  return _getDeposits({ month, status: 'pending' });
 }
 
-export async function getCompletedDeposits(month?: string): Promise<Sale[]> {
-  return getDeposits({ month, status: 'completed' });
+export const getPendingDeposits = withErrorLogging('getPendingDeposits', _getPendingDeposits);
+
+async function _getCompletedDeposits(month?: string): Promise<Sale[]> {
+  return _getDeposits({ month, status: 'completed' });
 }
 
+export const getCompletedDeposits = withErrorLogging('getCompletedDeposits', _getCompletedDeposits);
 
-export async function confirmDeposit(id: string): Promise<void> {
+
+async function _confirmDeposit(id: string): Promise<void> {
   await requireAuth();
   const idParsed = uuidSchema.safeParse(id);
-  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
+  if (!idParsed.success) throw new AppError(ErrorCode.VALIDATION, '올바르지 않은 ID입니다');
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -73,10 +80,12 @@ export async function confirmDeposit(id: string): Promise<void> {
   revalidatePath('/');
 }
 
-export async function confirmMultipleDeposits(ids: string[]): Promise<void> {
+export const confirmDeposit = withErrorLogging('confirmDeposit', _confirmDeposit);
+
+async function _confirmMultipleDeposits(ids: string[]): Promise<void> {
   await requireAuth();
   const parsed = idsSchema.safeParse(ids);
-  if (!parsed.success) throw new Error('올바르지 않은 ID 목록입니다');
+  if (!parsed.success) throw new AppError(ErrorCode.VALIDATION, '올바르지 않은 ID 목록입니다');
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -93,10 +102,12 @@ export async function confirmMultipleDeposits(ids: string[]): Promise<void> {
   revalidatePath('/');
 }
 
-export async function revertDeposit(id: string): Promise<void> {
+export const confirmMultipleDeposits = withErrorLogging('confirmMultipleDeposits', _confirmMultipleDeposits);
+
+async function _revertDeposit(id: string): Promise<void> {
   await requireAuth();
   const idParsed = uuidSchema.safeParse(id);
-  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
+  if (!idParsed.success) throw new AppError(ErrorCode.VALIDATION, '올바르지 않은 ID입니다');
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -113,6 +124,8 @@ export async function revertDeposit(id: string): Promise<void> {
   revalidatePath('/');
 }
 
+export const revertDeposit = withErrorLogging('revertDeposit', _revertDeposit);
+
 export interface DepositsSummary {
   pendingCount: number;
   pendingAmount: number;
@@ -120,7 +133,7 @@ export interface DepositsSummary {
   completedAmount: number;
 }
 
-export async function getDepositsSummary(month?: string): Promise<DepositsSummary> {
+async function _getDepositsSummary(month?: string): Promise<DepositsSummary> {
   const supabase = await createClient();
   
   let query = supabase
@@ -158,3 +171,5 @@ export async function getDepositsSummary(month?: string): Promise<DepositsSummar
 
   return summary;
 }
+
+export const getDepositsSummary = withErrorLogging('getDepositsSummary', _getDepositsSummary);

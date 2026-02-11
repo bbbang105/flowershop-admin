@@ -4,12 +4,13 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { CardCompanySetting } from '@/types/database';
 import { requireAuth } from '@/lib/auth-guard';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 
 // ============ Card Company Settings ============
 
-export async function getCardCompanySettings(): Promise<CardCompanySetting[]> {
+async function _getCardCompanySettings(): Promise<CardCompanySetting[]> {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from('card_company_settings')
     .select('*')
@@ -20,14 +21,16 @@ export async function getCardCompanySettings(): Promise<CardCompanySetting[]> {
   return data as CardCompanySetting[];
 }
 
-export async function updateCardCompanySetting(
-  id: string, 
+export const getCardCompanySettings = withErrorLogging('getCardCompanySettings', _getCardCompanySettings);
+
+async function _updateCardCompanySetting(
+  id: string,
   updates: { fee_rate?: number; deposit_days?: number }
 ): Promise<void> {
   await requireAuth();
 
   const supabase = await createClient();
-  
+
   const { error } = await supabase
     .from('card_company_settings')
     .update(updates)
@@ -37,15 +40,17 @@ export async function updateCardCompanySetting(
   revalidatePath('/settings');
 }
 
-export async function createCardCompanySetting(
-  name: string, 
-  feeRate: number = 2.0, 
+export const updateCardCompanySetting = withErrorLogging('updateCardCompanySetting', _updateCardCompanySetting);
+
+async function _createCardCompanySetting(
+  name: string,
+  feeRate: number = 2.0,
   depositDays: number = 3
 ): Promise<CardCompanySetting> {
   await requireAuth();
 
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from('card_company_settings')
     .insert({ name, fee_rate: feeRate, deposit_days: depositDays })
@@ -57,11 +62,13 @@ export async function createCardCompanySetting(
   return data as CardCompanySetting;
 }
 
-export async function deleteCardCompanySetting(id: string): Promise<void> {
+export const createCardCompanySetting = withErrorLogging('createCardCompanySetting', _createCardCompanySetting);
+
+async function _deleteCardCompanySetting(id: string): Promise<void> {
   await requireAuth();
 
   const supabase = await createClient();
-  
+
   const { error } = await supabase
     .from('card_company_settings')
     .update({ is_active: false })
@@ -70,6 +77,8 @@ export async function deleteCardCompanySetting(id: string): Promise<void> {
   if (error) throw error;
   revalidatePath('/settings');
 }
+
+export const deleteCardCompanySetting = withErrorLogging('deleteCardCompanySetting', _deleteCardCompanySetting);
 
 
 // ============ Product Categories ============
@@ -81,9 +90,9 @@ export interface ProductCategory {
   is_active: boolean;
 }
 
-export async function getProductCategories(): Promise<ProductCategory[]> {
+async function _getProductCategories(): Promise<ProductCategory[]> {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from('product_categories')
     .select('*')
@@ -94,11 +103,13 @@ export async function getProductCategories(): Promise<ProductCategory[]> {
   return data as ProductCategory[];
 }
 
-export async function createProductCategory(name: string): Promise<ProductCategory> {
+export const getProductCategories = withErrorLogging('getProductCategories', _getProductCategories);
+
+async function _createProductCategory(name: string): Promise<ProductCategory> {
   await requireAuth();
 
   const supabase = await createClient();
-  
+
   // 현재 최대 sort_order 가져오기
   const { data: existing } = await supabase
     .from('product_categories')
@@ -107,7 +118,7 @@ export async function createProductCategory(name: string): Promise<ProductCatego
     .limit(1);
 
   const nextOrder = existing && existing.length > 0 ? existing[0].sort_order + 1 : 1;
-  
+
   const { data, error } = await supabase
     .from('product_categories')
     .insert({ name, sort_order: nextOrder })
@@ -119,14 +130,16 @@ export async function createProductCategory(name: string): Promise<ProductCatego
   return data as ProductCategory;
 }
 
-export async function updateProductCategory(
-  id: string, 
+export const createProductCategory = withErrorLogging('createProductCategory', _createProductCategory);
+
+async function _updateProductCategory(
+  id: string,
   updates: { name?: string; sort_order?: number }
 ): Promise<void> {
   await requireAuth();
 
   const supabase = await createClient();
-  
+
   const { error } = await supabase
     .from('product_categories')
     .update(updates)
@@ -136,11 +149,13 @@ export async function updateProductCategory(
   revalidatePath('/settings');
 }
 
-export async function deleteProductCategory(id: string): Promise<void> {
+export const updateProductCategory = withErrorLogging('updateProductCategory', _updateProductCategory);
+
+async function _deleteProductCategory(id: string): Promise<void> {
   await requireAuth();
 
   const supabase = await createClient();
-  
+
   const { error } = await supabase
     .from('product_categories')
     .update({ is_active: false })
@@ -150,9 +165,11 @@ export async function deleteProductCategory(id: string): Promise<void> {
   revalidatePath('/settings');
 }
 
+export const deleteProductCategory = withErrorLogging('deleteProductCategory', _deleteProductCategory);
+
 // ============ Bulk Update ============
 
-export async function saveAllSettings(
+async function _saveAllSettings(
   cardSettings: Array<{ id: string; fee_rate: number; deposit_days: number }>,
   categories: string[]
 ): Promise<void> {
@@ -199,3 +216,5 @@ export async function saveAllSettings(
   revalidatePath('/settings');
   revalidatePath('/sales');
 }
+
+export const saveAllSettings = withErrorLogging('saveAllSettings', _saveAllSettings);

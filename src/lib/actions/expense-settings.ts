@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth-guard';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 
 export interface ExpenseCategory {
   id: string;
@@ -39,13 +40,13 @@ const DEFAULT_PAYMENTS: Omit<ExpensePaymentMethod, 'id' | 'created_at'>[] = [
   { value: 'transfer', label: '계좌이체', color: '#a855f7', sort_order: 3 },
 ];
 
-export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
+async function _getExpenseCategories(): Promise<ExpenseCategory[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('expense_categories')
     .select('*')
     .order('sort_order', { ascending: true });
-  
+
   if (error || !data || data.length === 0) {
     // 테이블이 없거나 데이터가 없으면 기본값 반환
     return DEFAULT_CATEGORIES.map((cat, idx) => ({
@@ -57,13 +58,15 @@ export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
   return data;
 }
 
-export async function getExpensePaymentMethods(): Promise<ExpensePaymentMethod[]> {
+export const getExpenseCategories = withErrorLogging('getExpenseCategories', _getExpenseCategories);
+
+async function _getExpensePaymentMethods(): Promise<ExpensePaymentMethod[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('expense_payment_methods')
     .select('*')
     .order('sort_order', { ascending: true });
-  
+
   if (error || !data || data.length === 0) {
     return DEFAULT_PAYMENTS.map((pm, idx) => ({
       ...pm,
@@ -74,59 +77,67 @@ export async function getExpensePaymentMethods(): Promise<ExpensePaymentMethod[]
   return data;
 }
 
+export const getExpensePaymentMethods = withErrorLogging('getExpensePaymentMethods', _getExpensePaymentMethods);
 
-export async function createExpenseCategory(label: string, color: string): Promise<ExpenseCategory> {
+
+async function _createExpenseCategory(label: string, color: string): Promise<ExpenseCategory> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   // value 생성 (label을 snake_case로 변환)
   const value = label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_가-힣]/g, '');
-  
+
   // 최대 sort_order 조회
   const { data: existing } = await supabase
     .from('expense_categories')
     .select('sort_order')
     .order('sort_order', { ascending: false })
     .limit(1);
-  
+
   const nextOrder = existing && existing.length > 0 ? existing[0].sort_order + 1 : 1;
-  
+
   const { data, error } = await supabase
     .from('expense_categories')
     .insert({ value, label, color, sort_order: nextOrder })
     .select()
     .single();
-  
-  if (error) throw new Error('카테고리 추가에 실패했습니다');
-  
+
+  if (error) throw error;
+
   revalidatePath('/expenses');
   return data;
 }
 
-export async function updateExpenseCategory(id: string, label: string, color: string): Promise<void> {
+export const createExpenseCategory = withErrorLogging('createExpenseCategory', _createExpenseCategory);
+
+async function _updateExpenseCategory(id: string, label: string, color: string): Promise<void> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   const { error } = await supabase
     .from('expense_categories')
     .update({ label, color })
     .eq('id', id);
-  
-  if (error) throw new Error('카테고리 수정에 실패했습니다');
-  
+
+  if (error) throw error;
+
   revalidatePath('/expenses');
 }
 
-export async function deleteExpenseCategory(id: string): Promise<void> {
+export const updateExpenseCategory = withErrorLogging('updateExpenseCategory', _updateExpenseCategory);
+
+async function _deleteExpenseCategory(id: string): Promise<void> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   const { error } = await supabase
     .from('expense_categories')
     .delete()
     .eq('id', id);
-  
-  if (error) throw new Error('카테고리 삭제에 실패했습니다');
-  
+
+  if (error) throw error;
+
   revalidatePath('/expenses');
 }
+
+export const deleteExpenseCategory = withErrorLogging('deleteExpenseCategory', _deleteExpenseCategory);

@@ -6,8 +6,9 @@ import { requireAuth } from '@/lib/auth-guard';
 import { createSale } from './sales';
 import type { Reservation, ReservationStatus, Sale } from '@/types/database';
 import { reservationSchema, uuidSchema } from '@/lib/validations';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 
-export async function getReservations(month: string): Promise<{ success: boolean; data?: Reservation[]; error?: string }> {
+async function _getReservations(month: string): Promise<{ success: boolean; data?: Reservation[]; error?: string }> {
   const supabase = await createClient();
   const [year, m] = month.split('-').map(Number);
   const startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
@@ -25,7 +26,9 @@ export async function getReservations(month: string): Promise<{ success: boolean
   return { success: true, data: data as Reservation[] };
 }
 
-export async function createReservation(formData: {
+export const getReservations = withErrorLogging('getReservations', _getReservations);
+
+async function _createReservation(formData: {
   date: string;
   time?: string;
   customer_name: string;
@@ -63,7 +66,9 @@ export async function createReservation(formData: {
   return { success: true, data: data as Reservation };
 }
 
-export async function updateReservation(
+export const createReservation = withErrorLogging('createReservation', _createReservation);
+
+async function _updateReservation(
   id: string,
   formData: {
     date?: string;
@@ -118,7 +123,9 @@ export async function updateReservation(
   return { success: true };
 }
 
-export async function deleteReservation(id: string): Promise<{ success: boolean; error?: string }> {
+export const updateReservation = withErrorLogging('updateReservation', _updateReservation);
+
+async function _deleteReservation(id: string): Promise<{ success: boolean; error?: string }> {
   await requireAuth();
   const idParsed = uuidSchema.safeParse(id);
   if (!idParsed.success) return { success: false, error: '올바르지 않은 ID입니다' };
@@ -128,11 +135,13 @@ export async function deleteReservation(id: string): Promise<{ success: boolean;
   return { success: true };
 }
 
+export const deleteReservation = withErrorLogging('deleteReservation', _deleteReservation);
+
 /**
  * 예약을 매출로 변환한다.
  * 1) 예약 조회 → 2) 매출 생성 (FormData 사용) → 3) 예약 상태 completed + sale_id 연결
  */
-export async function convertReservationToSale(
+async function _convertReservationToSale(
   reservationId: string,
   saleFormData: FormData,
 ): Promise<{ success: boolean; sale?: Sale; error?: string }> {
@@ -169,7 +178,9 @@ export async function convertReservationToSale(
     revalidatePath('/calendar');
     revalidatePath('/');
     return { success: true, sale: sale as Sale };
-  } catch (error: any) {
-    return { success: false, error: error.message || '매출 등록에 실패했습니다' };
+  } catch (error: unknown) {
+    return { success: false, error: (error instanceof Error ? error.message : '매출 등록에 실패했습니다') };
   }
 }
+
+export const convertReservationToSale = withErrorLogging('convertReservationToSale', _convertReservationToSale);

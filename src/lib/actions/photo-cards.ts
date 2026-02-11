@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth-guard';
 import { PhotoCard, PhotoFile } from '@/types/database';
 import { validateImageFile, photoCardSchema } from '@/lib/validations';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 
 const MAX_PHOTOS_PER_CARD = 10;
 
@@ -15,64 +16,68 @@ export interface PhotoCardsResponse {
   hasMore: boolean;
 }
 
-export async function getPhotoCards(
+async function _getPhotoCards(
   tag?: string,
   cursor?: string
 ): Promise<PhotoCardsResponse> {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('photo_cards')
     .select('*')
     .order('updated_at', { ascending: false })
     .limit(PAGE_SIZE + 1); // Fetch one extra to check if there's more
-  
+
   if (tag) {
     query = query.contains('tags', [tag]);
   }
-  
+
   if (cursor) {
     query = query.lt('updated_at', cursor);
   }
-  
+
   const { data, error } = await query;
-  
+
   if (error) {
     console.error('Error fetching photo cards:', error);
     return { cards: [], nextCursor: null, hasMore: false };
   }
-  
+
   const cards = data || [];
   const hasMore = cards.length > PAGE_SIZE;
   const resultCards = hasMore ? cards.slice(0, PAGE_SIZE) : cards;
-  const nextCursor = hasMore && resultCards.length > 0 
-    ? resultCards[resultCards.length - 1].updated_at 
+  const nextCursor = hasMore && resultCards.length > 0
+    ? resultCards[resultCards.length - 1].updated_at
     : null;
-  
+
   return { cards: resultCards, nextCursor, hasMore };
 }
 
-export async function getPhotoCardById(id: string): Promise<PhotoCard | null> {
+export const getPhotoCards = withErrorLogging('getPhotoCards', _getPhotoCards);
+
+async function _getPhotoCardById(id: string): Promise<PhotoCard | null> {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from('photo_cards')
     .select('*')
     .eq('id', id)
     .single();
-  
+
   if (error) {
     console.error('Error fetching photo card:', error);
     return null;
   }
-  
+
   return data;
 }
 
-export async function createPhotoCard(formData: FormData): Promise<PhotoCard> {
+export const getPhotoCardById = withErrorLogging('getPhotoCardById', _getPhotoCardById);
+
+async function _createPhotoCard(formData: FormData): Promise<PhotoCard> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   const title = formData.get('title') as string;
   const description = formData.get('description') as string | null;
   const tagsJson = formData.get('tags') as string;
@@ -85,7 +90,7 @@ export async function createPhotoCard(formData: FormData): Promise<PhotoCard> {
     tags = tagsJson ? JSON.parse(tagsJson) : [];
     photos = photosJson ? JSON.parse(photosJson) : [];
   } catch {
-    throw new Error('태그 또는 사진 데이터 형식이 올바르지 않습니다');
+    throw new AppError(ErrorCode.VALIDATION, '태그 또는 사진 데이터 형식이 올바르지 않습니다');
   }
 
   const parsed = photoCardSchema.safeParse({
@@ -95,7 +100,7 @@ export async function createPhotoCard(formData: FormData): Promise<PhotoCard> {
     photos,
   });
   if (!parsed.success) {
-    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+    throw new AppError(ErrorCode.VALIDATION, `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
   }
 
   const { data, error } = await supabase
@@ -109,32 +114,31 @@ export async function createPhotoCard(formData: FormData): Promise<PhotoCard> {
     })
     .select()
     .single();
-  
-  if (error) {
-    console.error('Error creating photo card:', error);
-    throw new Error('사진 카드 생성에 실패했습니다');
-  }
-  
+
+  if (error) throw error;
+
   return data;
 }
 
-export async function updatePhotoCard(id: string, formData: FormData): Promise<void> {
+export const createPhotoCard = withErrorLogging('createPhotoCard', _createPhotoCard);
+
+async function _updatePhotoCard(id: string, formData: FormData): Promise<void> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   const title = formData.get('title') as string;
   const description = formData.get('description') as string | null;
   const tagsJson = formData.get('tags') as string;
   const photosJson = formData.get('photos') as string;
   const saleId = formData.get('sale_id') as string | null;
-  
+
   let tags: string[];
   let photos: PhotoFile[];
   try {
     tags = tagsJson ? JSON.parse(tagsJson) : [];
     photos = photosJson ? JSON.parse(photosJson) : [];
   } catch {
-    throw new Error('태그 또는 사진 데이터 형식이 올바르지 않습니다');
+    throw new AppError(ErrorCode.VALIDATION, '태그 또는 사진 데이터 형식이 올바르지 않습니다');
   }
 
   const parsed = photoCardSchema.safeParse({
@@ -144,7 +148,7 @@ export async function updatePhotoCard(id: string, formData: FormData): Promise<v
     photos,
   });
   if (!parsed.success) {
-    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+    throw new AppError(ErrorCode.VALIDATION, `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
   }
 
   const { error } = await supabase
@@ -157,136 +161,130 @@ export async function updatePhotoCard(id: string, formData: FormData): Promise<v
       sale_id: saleId || null,
     })
     .eq('id', id);
-  
-  if (error) {
-    console.error('Error updating photo card:', error);
-    throw new Error('사진 카드 수정에 실패했습니다');
-  }
+
+  if (error) throw error;
 }
 
-export async function deletePhotoCard(id: string): Promise<PhotoFile[]> {
+export const updatePhotoCard = withErrorLogging('updatePhotoCard', _updatePhotoCard);
+
+async function _deletePhotoCard(id: string): Promise<PhotoFile[]> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   // Get card to retrieve photo URLs for storage cleanup
   const { data: card } = await supabase
     .from('photo_cards')
     .select('photos')
     .eq('id', id)
     .single();
-  
+
   const { error } = await supabase
     .from('photo_cards')
     .delete()
     .eq('id', id);
-  
-  if (error) {
-    console.error('Error deleting photo card:', error);
-    throw new Error('사진 카드 삭제에 실패했습니다');
-  }
-  
+
+  if (error) throw error;
+
   // Return photos for storage cleanup
   return (card?.photos as PhotoFile[]) || [];
 }
 
+export const deletePhotoCard = withErrorLogging('deletePhotoCard', _deletePhotoCard);
 
-export async function uploadPhotos(cardId: string, formData: FormData): Promise<PhotoFile[]> {
+
+async function _uploadPhotos(cardId: string, formData: FormData): Promise<PhotoFile[]> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   // Get current card to check photo count
   const { data: card } = await supabase
     .from('photo_cards')
     .select('photos')
     .eq('id', cardId)
     .single();
-  
+
   const currentPhotos = (card?.photos as PhotoFile[]) || [];
   const files = formData.getAll('files') as File[];
   const originalNames = formData.getAll('originalNames') as string[];
-  
+
   if (currentPhotos.length + files.length > MAX_PHOTOS_PER_CARD) {
-    throw new Error(`사진은 최대 ${MAX_PHOTOS_PER_CARD}장까지 등록할 수 있습니다. 현재 ${currentPhotos.length}장 등록됨.`);
+    throw new AppError(ErrorCode.VALIDATION, `사진은 최대 ${MAX_PHOTOS_PER_CARD}장까지 등록할 수 있습니다. 현재 ${currentPhotos.length}장 등록됨.`);
   }
-  
+
   const uploadedPhotos: PhotoFile[] = [];
-  
+
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const imageError = validateImageFile(file);
-    if (imageError) throw new Error(imageError);
+    if (imageError) throw new AppError(ErrorCode.VALIDATION, imageError);
 
     const originalName = originalNames[i] || file.name;
     const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${cardId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    
+
     const arrayBuffer = await file.arrayBuffer();
-    
+
     const { error: uploadError } = await supabase.storage
       .from('photo-cards')
       .upload(fileName, arrayBuffer, {
         contentType: file.type || 'image/jpeg',
         upsert: false,
       });
-    
+
     if (uploadError) {
       console.error('Error uploading photo:', uploadError);
       continue;
     }
-    
+
     const { data: { publicUrl } } = supabase.storage
       .from('photo-cards')
       .getPublicUrl(fileName);
-    
+
     uploadedPhotos.push({ url: publicUrl, originalName });
   }
-  
+
   // Update card with new photos
   const newPhotos = [...currentPhotos, ...uploadedPhotos];
-  
+
   const { error: updateError } = await supabase
     .from('photo_cards')
     .update({ photos: newPhotos })
     .eq('id', cardId);
-  
-  if (updateError) {
-    console.error('Error updating photo card:', updateError);
-    throw new Error('사진 업로드 후 카드 업데이트에 실패했습니다');
-  }
-  
+
+  if (updateError) throw updateError;
+
   return uploadedPhotos;
 }
 
-export async function deletePhoto(cardId: string, photoUrl: string): Promise<void> {
+export const uploadPhotos = withErrorLogging('uploadPhotos', _uploadPhotos);
+
+async function _deletePhoto(cardId: string, photoUrl: string): Promise<void> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   // Get current card
   const { data: card } = await supabase
     .from('photo_cards')
     .select('photos')
     .eq('id', cardId)
     .single();
-  
+
   if (!card) {
-    throw new Error('카드를 찾을 수 없습니다');
+    throw new AppError(ErrorCode.NOT_FOUND, '카드를 찾을 수 없습니다');
   }
-  
+
   // Remove photo from array
   const photos = card.photos as PhotoFile[];
   const newPhotos = photos.filter((p) => p.url !== photoUrl);
-  
+
   // Update card
   const { error: updateError } = await supabase
     .from('photo_cards')
     .update({ photos: newPhotos })
     .eq('id', cardId);
-  
-  if (updateError) {
-    console.error('Error updating photo card:', updateError);
-    throw new Error('사진 삭제에 실패했습니다');
-  }
-  
+
+  if (updateError) throw updateError;
+
   // Delete from storage
   try {
     const urlParts = photoUrl.split('/photo-cards/');
@@ -299,56 +297,59 @@ export async function deletePhoto(cardId: string, photoUrl: string): Promise<voi
   }
 }
 
-export async function deletePhotosFromStorage(photos: PhotoFile[]): Promise<void> {
+export const deletePhoto = withErrorLogging('deletePhoto', _deletePhoto);
+
+async function _deletePhotosFromStorage(photos: PhotoFile[]): Promise<void> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   const filePaths = photos
     .map(photo => {
       const parts = photo.url.split('/photo-cards/');
       return parts.length > 1 ? parts[1] : null;
     })
     .filter((path): path is string => path !== null);
-  
+
   if (filePaths.length > 0) {
     await supabase.storage.from('photo-cards').remove(filePaths);
   }
 }
 
-export async function reorderPhotos(cardId: string, photos: PhotoFile[]): Promise<void> {
+export const deletePhotosFromStorage = withErrorLogging('deletePhotosFromStorage', _deletePhotosFromStorage);
+
+async function _reorderPhotos(cardId: string, photos: PhotoFile[]): Promise<void> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   const { error } = await supabase
     .from('photo_cards')
     .update({ photos })
     .eq('id', cardId);
-  
-  if (error) {
-    console.error('Error reordering photos:', error);
-    throw new Error('사진 순서 변경에 실패했습니다');
-  }
+
+  if (error) throw error;
 }
 
+export const reorderPhotos = withErrorLogging('reorderPhotos', _reorderPhotos);
 
-export async function downloadPhoto(photo: PhotoFile): Promise<{ url: string; filename: string } | null> {
+
+async function _downloadPhoto(photo: PhotoFile): Promise<{ url: string; filename: string } | null> {
   const supabase = await createClient();
-  
+
   try {
     const urlParts = photo.url.split('/photo-cards/');
     if (urlParts.length <= 1) return null;
-    
+
     const filePath = urlParts[1];
-    
+
     const { data, error } = await supabase.storage
       .from('photo-cards')
       .createSignedUrl(filePath, 60);
-    
+
     if (error || !data) {
       console.error('Error creating signed URL:', error);
       return null;
     }
-    
+
     return {
       url: data.signedUrl,
       filename: photo.originalName,
@@ -359,20 +360,22 @@ export async function downloadPhoto(photo: PhotoFile): Promise<{ url: string; fi
   }
 }
 
-export async function downloadAllPhotos(cardId: string): Promise<{ urls: Array<{ url: string; filename: string }> }> {
+export const downloadPhoto = withErrorLogging('downloadPhoto', _downloadPhoto);
+
+async function _downloadAllPhotos(cardId: string): Promise<{ urls: Array<{ url: string; filename: string }> }> {
   const supabase = await createClient();
-  
+
   const { data: card } = await supabase
     .from('photo_cards')
     .select('photos, title')
     .eq('id', cardId)
     .single();
-  
+
   const photos = (card?.photos as PhotoFile[]) || [];
   if (!photos.length) {
     return { urls: [] };
   }
-  
+
   // 병렬 다운로드 (순차 → Promise.all)
   const results = await Promise.all(photos.map((photo) => downloadPhoto(photo)));
   const downloadUrls = results.filter((r): r is { url: string; filename: string } => r !== null);
@@ -380,16 +383,18 @@ export async function downloadAllPhotos(cardId: string): Promise<{ urls: Array<{
   return { urls: downloadUrls };
 }
 
+export const downloadAllPhotos = withErrorLogging('downloadAllPhotos', _downloadAllPhotos);
 
-export async function getPhotoCardBySaleId(saleId: string): Promise<PhotoCard | null> {
+
+async function _getPhotoCardBySaleId(saleId: string): Promise<PhotoCard | null> {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from('photo_cards')
     .select('*')
     .eq('sale_id', saleId)
     .single();
-  
+
   if (error) {
     if (error.code === 'PGRST116') {
       // No rows returned
@@ -398,11 +403,13 @@ export async function getPhotoCardBySaleId(saleId: string): Promise<PhotoCard | 
     console.error('Error fetching photo card by sale_id:', error);
     return null;
   }
-  
+
   return data;
 }
 
-export async function createOrUpdatePhotoCardForSale(
+export const getPhotoCardBySaleId = withErrorLogging('getPhotoCardBySaleId', _getPhotoCardBySaleId);
+
+async function _createOrUpdatePhotoCardForSale(
   saleId: string,
   title: string,
   photos: PhotoFile[],
@@ -411,10 +418,10 @@ export async function createOrUpdatePhotoCardForSale(
 ): Promise<PhotoCard> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   // Check if card already exists for this sale
   const existingCard = await getPhotoCardBySaleId(saleId);
-  
+
   if (existingCard) {
     // Update existing card
     const { data, error } = await supabase
@@ -428,12 +435,9 @@ export async function createOrUpdatePhotoCardForSale(
       .eq('id', existingCard.id)
       .select()
       .single();
-    
-    if (error) {
-      console.error('Error updating photo card for sale:', error);
-      throw new Error('사진 카드 업데이트에 실패했습니다');
-    }
-    
+
+    if (error) throw error;
+
     return data;
   } else {
     // Create new card
@@ -448,12 +452,11 @@ export async function createOrUpdatePhotoCardForSale(
       })
       .select()
       .single();
-    
-    if (error) {
-      console.error('Error creating photo card for sale:', error);
-      throw new Error('사진 카드 생성에 실패했습니다');
-    }
-    
+
+    if (error) throw error;
+
     return data;
   }
 }
+
+export const createOrUpdatePhotoCardForSale = withErrorLogging('createOrUpdatePhotoCardForSale', _createOrUpdatePhotoCardForSale);

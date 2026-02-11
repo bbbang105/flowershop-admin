@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
+import { reportError } from '@/lib/logger';
 
 export default function Error({
   error,
@@ -10,6 +12,14 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const reported = useRef(false);
+
+  useEffect(() => {
+    if (reported.current) return;
+    reported.current = true;
+    reportError(error, { action: 'dashboard-error-boundary' });
+  }, [error]);
+
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
