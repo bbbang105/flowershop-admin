@@ -2,6 +2,7 @@ export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'naverpay';
 export type DepositStatus = 'pending' | 'completed' | 'not_applicable';
 export type ExpenseCategory = 'flower_purchase' | 'delivery' | 'advertising' | 'rent' | 'utilities' | 'supplies' | 'other';
 export type CustomerGrade = 'new' | 'regular' | 'vip' | 'blacklist';
+export type CustomerGender = 'male' | 'female';
 export type ReservationChannel = 'phone' | 'kakaotalk' | 'naver_booking' | 'road' | 'other';
 
 export type ProductCategory = 
@@ -84,6 +85,7 @@ export interface Customer {
   name: string;
   phone: string;
   grade: CustomerGrade;
+  gender?: CustomerGender | null;
   total_purchase_count: number;
   total_purchase_amount: number;
   first_purchase_date?: string;
@@ -159,6 +161,7 @@ export interface Reservation {
   status: ReservationStatus;
   sale_id: string | null;
   estimated_amount: number;
+  reminder_at: string | null;
   created_at: string;
   updated_at: string;
 }

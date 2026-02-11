@@ -16,7 +16,7 @@ import {
   isToday,
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, X, Pencil, Trash2, Loader2, ShoppingBag, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Pencil, Trash2, Loader2, ShoppingBag, ExternalLink, BellRing } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -95,6 +95,8 @@ export function CalendarClient() {
     description: '',
     estimated_amount: '',
     status: 'pending' as ReservationStatus,
+    reminder_date: '',
+    reminder_time: '',
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -277,6 +279,8 @@ export function CalendarClient() {
       description: '',
       estimated_amount: '',
       status: 'pending',
+      reminder_date: '',
+      reminder_time: '',
     });
     setEditingId(null);
     setShowForm(false);
@@ -292,6 +296,8 @@ export function CalendarClient() {
       description: reservation.description || '',
       estimated_amount: reservation.estimated_amount ? String(reservation.estimated_amount) : '',
       status: reservation.status as ReservationStatus,
+      reminder_date: reservation.reminder_at ? reservation.reminder_at.slice(0, 10) : '',
+      reminder_time: reservation.reminder_at ? reservation.reminder_at.slice(11, 16) : '',
     });
     setShowForm(true);
   }
@@ -306,6 +312,13 @@ export function CalendarClient() {
     setIsSaving(true);
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
+    // 리마인더 날짜+시간 → ISO 8601 (KST +09:00)
+    let reminderAt: string | null = null;
+    if (formData.reminder_date) {
+      const time = formData.reminder_time || '08:00';
+      reminderAt = `${formData.reminder_date}T${time}:00+09:00`;
+    }
+
     if (editingId) {
       const result = await updateReservation(editingId, {
         date: dateStr,
@@ -316,6 +329,7 @@ export function CalendarClient() {
         description: formData.description || null,
         estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : 0,
         status: formData.status,
+        reminder_at: reminderAt,
       });
       if (result.success) {
         toast.success('예약이 수정되었습니다');
@@ -334,6 +348,7 @@ export function CalendarClient() {
         estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : undefined,
         customer_phone: formData.customer_phone || undefined,
         status: formData.status,
+        reminder_at: reminderAt,
       });
       if (result.success) {
         toast.success('예약이 등록되었습니다');
@@ -567,6 +582,34 @@ export function CalendarClient() {
                     <p className="text-[10px] text-muted-foreground">대기 → 확정 → 완료 순으로 변경해주세요</p>
                   </div>
                   <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      <BellRing className="w-3 h-3 inline mr-1" />
+                      리마인더 알림
+                    </Label>
+                    <div className="grid grid-cols-[1fr_90px] gap-2">
+                      <Input
+                        type="date"
+                        value={formData.reminder_date}
+                        onChange={(e) => setFormData({ ...formData, reminder_date: e.target.value })}
+                        className="h-8 text-sm"
+                        aria-label="리마인더 알림 날짜"
+                      />
+                      <Input
+                        type="time"
+                        value={formData.reminder_time}
+                        onChange={(e) => setFormData({ ...formData, reminder_time: e.target.value })}
+                        className="h-8 text-sm"
+                        aria-label="리마인더 알림 시간"
+                        disabled={!formData.reminder_date}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {formData.reminder_date
+                        ? `${formData.reminder_date} ${formData.reminder_time || '08:00'}에 푸시 알림`
+                        : '날짜를 선택하면 해당 시간에 푸시 알림을 받아요 (기본 오전 8시)'}
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">메모</Label>
                     <textarea
                       value={formData.description}
@@ -636,6 +679,12 @@ export function CalendarClient() {
                         )}
                         {r.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.description}</p>
+                        )}
+                        {r.reminder_at && (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <BellRing className="w-3 h-3" />
+                            {r.reminder_at.slice(0, 10)} {r.reminder_at.slice(11, 16)} 알림
+                          </p>
                         )}
 
                         {/* 매출 등록 버튼 또는 매출 확인 링크 */}

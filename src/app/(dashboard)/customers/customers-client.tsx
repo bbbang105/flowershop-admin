@@ -10,9 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Users, Pencil, Trash2, Loader2, Phone, ShoppingBag, ExternalLink, TrendingUp } from 'lucide-react';
+import { Plus, Search, Users, Pencil, Trash2, Loader2, Phone, ShoppingBag, ExternalLink, TrendingUp, Crown, Star, AlertTriangle, UserPlus, CalendarDays } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { createCustomer, updateCustomer, deleteCustomer, getCustomerSales, checkPhoneDuplicate } from '@/lib/actions/customers';
@@ -20,7 +20,7 @@ import { cn, formatPhoneNumber, formatCurrency } from '@/lib/utils';
 import type { Customer, Sale } from '@/types/database';
 import { ExportButton } from '@/components/ui/export-button';
 import type { ExportConfig } from '@/lib/export';
-import type { SaleCategory, PaymentMethod } from '@/lib/actions/sale-settings';
+import type { SaleCategory } from '@/lib/actions/sale-settings';
 
 const gradeLabels: Record<string, { label: string; icon: string; color: string; bg: string }> = {
   new: { label: '신규', icon: '', color: 'text-muted-foreground', bg: 'bg-muted' },
@@ -29,18 +29,43 @@ const gradeLabels: Record<string, { label: string; icon: string; color: string; 
   blacklist: { label: '블랙', icon: '⚠️', color: 'text-red-600', bg: 'bg-red-50' },
 };
 
+const genderLabels: Record<string, string> = { male: '남', female: '여' };
+
+function GenderBadge({ gender, size = 'sm' }: { gender: string | null | undefined; size?: 'sm' | 'md' }) {
+  if (!gender) return null;
+  const base = size === 'md' ? 'px-2 py-0.5 text-xs' : 'px-1.5 py-0.5 text-[10px]';
+  if (gender === 'male') {
+    return <span className={`${base} font-medium rounded bg-blue-500/10 text-blue-600 shrink-0`} aria-label="남성">{genderLabels.male}</span>;
+  }
+  if (gender === 'female') {
+    return <span className={`${base} font-medium rounded bg-pink-500/10 text-pink-600 shrink-0`} aria-label="여성">{genderLabels.female}</span>;
+  }
+  return null;
+}
+
+const gradeSections = [
+  { key: 'vip', label: 'VIP', icon: Crown, iconColor: 'text-purple-600 dark:text-purple-400' },
+  { key: 'regular', label: '단골', icon: Star, iconColor: 'text-yellow-600 dark:text-yellow-400' },
+  { key: 'new', label: '신규', icon: UserPlus, iconColor: 'text-muted-foreground' },
+  { key: 'blacklist', label: '블랙리스트', icon: AlertTriangle, iconColor: 'text-red-600 dark:text-red-400' },
+] as const;
+
+type SortBy = 'newest' | 'oldest' | 'name' | 'purchase_count' | 'purchase_amount';
+type GenderFilter = 'all' | 'male' | 'female';
+
 interface Props {
   initialCustomers: Customer[];
   initialCategories: SaleCategory[];
-  initialPayments: PaymentMethod[];
 }
 
-export function CustomersClient({ initialCustomers, initialCategories, initialPayments }: Props) {
+export function CustomersClient({ initialCustomers, initialCategories }: Props) {
   const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [gradeFilter, setGradeFilter] = useState('all');
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [noteValue, setNoteValue] = useState('');
@@ -61,10 +86,6 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
     Object.fromEntries(initialCategories.map(c => [c.value, c.label])), [initialCategories]);
   const categoryColors = useMemo(() =>
     Object.fromEntries(initialCategories.map(c => [c.value, c.color])), [initialCategories]);
-  const paymentLabels = useMemo(() =>
-    Object.fromEntries(initialPayments.map(p => [p.value, p.label])), [initialPayments]);
-  const paymentColors = useMemo(() =>
-    Object.fromEntries(initialPayments.map(p => [p.value, p.color])), [initialPayments]);
 
   // 연락처 중복 체크 (등록)
   const handlePhoneChange = (value: string) => {
@@ -98,21 +119,66 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
     }
   };
 
+  // 정렬 함수
+  const sortCustomers = useCallback((customers: Customer[]) => {
+    return [...customers].sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'name':
+          return a.name.localeCompare(b.name, 'ko');
+        case 'purchase_count':
+          return b.total_purchase_count - a.total_purchase_count;
+        case 'purchase_amount':
+          return b.total_purchase_amount - a.total_purchase_amount;
+        default:
+          return 0;
+      }
+    });
+  }, [sortBy]);
+
   const filteredCustomers = useMemo(() => {
-    return initialCustomers
+    const filtered = initialCustomers
       .filter(c => gradeFilter === 'all' || c.grade === gradeFilter)
+      .filter(c => genderFilter === 'all' || c.gender === genderFilter)
       .filter(c => {
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         return c.name.toLowerCase().includes(q) || c.phone.includes(q);
       });
-  }, [initialCustomers, gradeFilter, searchQuery]);
+    return sortCustomers(filtered);
+  }, [initialCustomers, gradeFilter, genderFilter, searchQuery, sortCustomers]);
+
+  // 등급별 그룹핑 (등급 필터가 '전체'일 때만)
+  const groupedByGrade = useMemo(() => {
+    if (gradeFilter !== 'all') return null;
+    const groups: Record<string, Customer[]> = {};
+    for (const customer of filteredCustomers) {
+      const grade = customer.grade || 'new';
+      if (!groups[grade]) groups[grade] = [];
+      groups[grade].push(customer);
+    }
+    return groups;
+  }, [filteredCustomers, gradeFilter]);
 
   const stats = useMemo(() => {
     const total = initialCustomers.length;
-    const regular = initialCustomers.filter(c => c.grade === 'regular' || c.grade === 'vip').length;
-    return { total, regular };
+    const regularVip = initialCustomers.filter(c => c.grade === 'regular' || c.grade === 'vip').length;
+    const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+    const recentBuyers = initialCustomers.filter(c => c.last_purchase_date && c.last_purchase_date >= thirtyDaysAgo).length;
+    return { total, regularVip, recentBuyers };
   }, [initialCustomers]);
+
+  const hasActiveFilters = gradeFilter !== 'all' || genderFilter !== 'all' || searchQuery !== '' || sortBy !== 'newest';
+
+  const resetFilters = () => {
+    setGradeFilter('all');
+    setGenderFilter('all');
+    setSearchQuery('');
+    setSortBy('newest');
+  };
 
   const getExportConfig = useCallback((): ExportConfig => ({
     filename: `고객_${format(new Date(), 'yyyy-MM-dd')}`,
@@ -121,6 +187,10 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
       { header: '이름', accessor: (c) => String(c.name || '') },
       { header: '전화번호', accessor: (c) => String(c.phone || '') },
       { header: '등급', accessor: (c) => gradeLabels[c.grade as string]?.label || String(c.grade || '') },
+      { header: '성별', accessor: (c) => {
+        const g = c.gender as string | null | undefined;
+        return g ? genderLabels[g] || '' : '';
+      }},
       { header: '구매횟수', accessor: (c) => Number(c.total_purchase_count) || 0 },
       { header: '총구매금액', accessor: (c) => Number(c.total_purchase_amount) || 0, format: 'currency' },
       { header: '최근구매일', accessor: (c) => String(c.last_purchase_date || '') },
@@ -219,6 +289,86 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
     }
   };
 
+  // 카드 렌더링 함수
+  const renderCustomerCard = (customer: Customer) => {
+    const grade = gradeLabels[customer.grade];
+    return (
+      <Card
+        key={customer.id}
+        className="group cursor-pointer hover:bg-muted/30 active:bg-muted active:scale-[0.99] transition-colors touch-manipulation"
+        onClick={() => handleSelectCustomer(customer)}
+      >
+        <CardContent className="p-4">
+          {/* Top: name + grade + gender + actions */}
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-9 h-9 bg-muted rounded-full flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-muted-foreground">
+                  {customer.name.charAt(0)}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-semibold text-foreground text-sm truncate">{customer.name}</span>
+                  <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${grade.bg} ${grade.color} shrink-0`}>
+                    {grade.icon} {grade.label}
+                  </span>
+                  <GenderBadge gender={customer.gender} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{customer.phone}</p>
+              </div>
+            </div>
+            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); handleEdit(customer); }}
+                aria-label={`${customer.name} 수정`}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                onClick={(e) => { e.stopPropagation(); handleDelete(customer); }}
+                aria-label={`${customer.name} 삭제`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border">
+            <div>
+              <p className="text-[10px] text-muted-foreground">구매</p>
+              <p className="text-sm font-semibold text-foreground tabular-nums">{customer.total_purchase_count}회</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">총액</p>
+              <p className="text-sm font-semibold text-brand tabular-nums">{formatCurrency(customer.total_purchase_amount)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">최근</p>
+              <p className="text-sm font-medium text-foreground tabular-nums">
+                {customer.last_purchase_date ? format(new Date(customer.last_purchase_date), 'M/d', { locale: ko }) : '-'}
+              </p>
+            </div>
+          </div>
+
+          {/* Note preview */}
+          {customer.note && (
+            <p className="text-xs text-muted-foreground mt-2 truncate" title={customer.note}>
+              {customer.note}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -237,7 +387,7 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -259,7 +409,20 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">단골/VIP</p>
-                <p className="text-xl font-bold text-foreground tabular-nums">{stats.regular}명</p>
+                <p className="text-xl font-bold text-foreground tabular-nums">{stats.regularVip}명</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                <CalendarDays className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">최근 30일</p>
+                <p className="text-xl font-bold text-foreground tabular-nums">{stats.recentBuyers}명</p>
               </div>
             </div>
           </CardContent>
@@ -267,17 +430,39 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Select value={gradeFilter} onValueChange={setGradeFilter}>
           <SelectTrigger className="w-[120px] bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
+            <SelectItem value="all">전체 등급</SelectItem>
             <SelectItem value="new">신규</SelectItem>
             <SelectItem value="regular">단골</SelectItem>
             <SelectItem value="vip">VIP</SelectItem>
             <SelectItem value="blacklist">블랙리스트</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v as GenderFilter)}>
+          <SelectTrigger className="w-[110px] bg-background">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">전체 성별</SelectItem>
+            <SelectItem value="male">남성</SelectItem>
+            <SelectItem value="female">여성</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+          <SelectTrigger className="w-[130px] bg-background">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">최신순</SelectItem>
+            <SelectItem value="oldest">오래된순</SelectItem>
+            <SelectItem value="name">가나다순</SelectItem>
+            <SelectItem value="purchase_count">구매횟수순</SelectItem>
+            <SelectItem value="purchase_amount">구매금액순</SelectItem>
           </SelectContent>
         </Select>
         <div className="relative flex-1 min-w-[180px] max-w-xs">
@@ -290,19 +475,22 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
             aria-label="고객 검색"
           />
         </div>
+        <p className="text-sm text-muted-foreground ml-auto shrink-0">
+          {filteredCustomers.length}명{filteredCustomers.length !== initialCustomers.length && ` / 전체 ${initialCustomers.length}명`}
+        </p>
       </div>
 
 
       {/* Customer Card Grid */}
       {filteredCustomers.length === 0 ? (
         <Card className="p-12 text-center">
-          {(gradeFilter !== 'all' || searchQuery) ? (
+          {hasActiveFilters ? (
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
                 <Search className="w-6 h-6 text-muted-foreground" />
               </div>
               <p>선택한 필터에 맞는 고객이 없습니다</p>
-              <Button variant="outline" size="sm" onClick={() => { setGradeFilter('all'); setSearchQuery(''); }}>
+              <Button variant="outline" size="sm" onClick={resetFilters}>
                 필터 초기화
               </Button>
             </div>
@@ -318,85 +506,31 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
             </div>
           )}
         </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredCustomers.map((customer) => {
-            const grade = gradeLabels[customer.grade];
+      ) : groupedByGrade ? (
+        // 등급별 섹션 그룹핑
+        <div className="space-y-6">
+          {gradeSections.map(({ key, label, icon: Icon, iconColor }) => {
+            const customers = groupedByGrade[key];
+            if (!customers || customers.length === 0) return null;
             return (
-              <Card
-                key={customer.id}
-                className="group cursor-pointer hover:bg-muted/30 active:bg-muted active:scale-[0.99] transition-colors touch-manipulation"
-                onClick={() => handleSelectCustomer(customer)}
-              >
-                <CardContent className="p-4">
-                  {/* Top: name + grade + actions */}
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-9 h-9 bg-muted rounded-full flex items-center justify-center shrink-0">
-                        <span className="text-sm font-bold text-muted-foreground">
-                          {customer.name.charAt(0)}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-foreground text-sm truncate">{customer.name}</span>
-                          <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${grade.bg} ${grade.color} shrink-0`}>
-                            {grade.icon} {grade.label}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{customer.phone}</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                        onClick={(e) => { e.stopPropagation(); handleEdit(customer); }}
-                        aria-label={`${customer.name} 수정`}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(customer); }}
-                        aria-label={`${customer.name} 삭제`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">구매</p>
-                      <p className="text-sm font-semibold text-foreground tabular-nums">{customer.total_purchase_count}회</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">총액</p>
-                      <p className="text-sm font-semibold text-brand tabular-nums">{formatCurrency(customer.total_purchase_amount)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">최근</p>
-                      <p className="text-sm font-medium text-foreground tabular-nums">
-                        {customer.last_purchase_date ? format(new Date(customer.last_purchase_date), 'M/d', { locale: ko }) : '-'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Note preview */}
-                  {customer.note && (
-                    <p className="text-xs text-muted-foreground mt-2 truncate" title={customer.note}>
-                      {customer.note}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              <div key={key}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Icon className={cn('w-4 h-4', iconColor)} />
+                  <h2 className="text-sm font-semibold text-foreground">{label}</h2>
+                  <span className="text-xs text-muted-foreground">{customers.length}명</span>
+                  <div className="flex-1 border-t border-border ml-2" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {customers.map(renderCustomerCard)}
+                </div>
+              </div>
             );
           })}
+        </div>
+      ) : (
+        // 특정 등급 필터 → 플랫 그리드
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredCustomers.map(renderCustomerCard)}
         </div>
       )}
 
@@ -432,20 +566,34 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
               )}
               <p className="text-[11px] text-muted-foreground">같은 연락처의 고객은 중복 등록할 수 없어요</p>
             </div>
-            <div className="space-y-2">
-              <Label>등급</Label>
-              <Select name="grade" defaultValue="new">
-                <SelectTrigger className="bg-muted">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="new">신규</SelectItem>
-                  <SelectItem value="regular">🌟 단골</SelectItem>
-                  <SelectItem value="vip">👑 VIP</SelectItem>
-                  <SelectItem value="blacklist">⚠️ 블랙리스트</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">신규: 첫 방문 / 단골: 자주 오는 고객 / VIP: 최우수 고객</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>등급</Label>
+                <Select name="grade" defaultValue="new">
+                  <SelectTrigger className="bg-muted">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">신규</SelectItem>
+                    <SelectItem value="regular">단골</SelectItem>
+                    <SelectItem value="vip">VIP</SelectItem>
+                    <SelectItem value="blacklist">블랙리스트</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>성별</Label>
+                <Select name="gender" defaultValue="none">
+                  <SelectTrigger className="bg-muted">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">미지정</SelectItem>
+                    <SelectItem value="male">남성</SelectItem>
+                    <SelectItem value="female">여성</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
@@ -487,11 +635,12 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                   <Users className="w-6 h-6 text-muted-foreground" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-lg text-foreground">{selectedCustomer.name}</span>
                     <span className={`px-2 py-0.5 text-xs font-medium rounded ${gradeLabels[selectedCustomer.grade].bg} ${gradeLabels[selectedCustomer.grade].color}`}>
                       {gradeLabels[selectedCustomer.grade].icon} {gradeLabels[selectedCustomer.grade].label}
                     </span>
+                    <GenderBadge gender={selectedCustomer.gender} size="md" />
                   </div>
                   <a href={`tel:${selectedCustomer.phone.replace(/-/g, '')}`} className="flex items-center gap-1 text-muted-foreground text-sm hover:text-brand transition-colors">
                     <Phone className="w-3 h-3" />
@@ -673,19 +822,34 @@ export function CustomersClient({ initialCustomers, initialCategories, initialPa
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label>등급</Label>
-                <Select name="grade" defaultValue={editingCustomer.grade}>
-                  <SelectTrigger className="bg-muted">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">신규</SelectItem>
-                    <SelectItem value="regular">🌟 단골</SelectItem>
-                    <SelectItem value="vip">👑 VIP</SelectItem>
-                    <SelectItem value="blacklist">⚠️ 블랙리스트</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>등급</Label>
+                  <Select name="grade" defaultValue={editingCustomer.grade}>
+                    <SelectTrigger className="bg-muted">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">신규</SelectItem>
+                      <SelectItem value="regular">단골</SelectItem>
+                      <SelectItem value="vip">VIP</SelectItem>
+                      <SelectItem value="blacklist">블랙리스트</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>성별</Label>
+                  <Select name="gender" defaultValue={editingCustomer.gender || 'none'}>
+                    <SelectTrigger className="bg-muted">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">미지정</SelectItem>
+                      <SelectItem value="male">남성</SelectItem>
+                      <SelectItem value="female">여성</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">

@@ -35,6 +35,7 @@ export const customerSchema = z.object({
   name: z.string().min(1, '이름을 입력해주세요').max(100),
   phone: z.string().min(10).max(20),
   grade: z.enum(['new', 'regular', 'vip', 'blacklist']).optional(),
+  gender: z.enum(['male', 'female']).nullable().optional(),
   note: z.string().max(1000).nullable().optional(),
 });
 
@@ -61,6 +62,7 @@ export const reservationSchema = z.object({
   description: z.string().max(1000).optional(),
   estimated_amount: z.number().int().min(0).max(100_000_000).optional(),
   status: z.enum(['pending', 'confirmed', 'completed', 'cancelled']).optional(),
+  reminder_at: z.string().datetime({ offset: true }).nullable().optional(),
 });
 
 // 카테고리 설정
