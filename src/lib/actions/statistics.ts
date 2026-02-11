@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import type { PaymentMethod, ReservationChannel, ExpenseCategory } from '@/types/database';
-import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
+import { withErrorLogging } from '@/lib/errors';
 
 export interface CategoryStat {
   name: string;

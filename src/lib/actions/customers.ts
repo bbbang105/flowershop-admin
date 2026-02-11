@@ -345,8 +345,6 @@ export const checkPhoneDuplicate = withErrorLogging('checkPhoneDuplicate', _chec
 async function _getOrCreateCustomer(name: string, phone?: string): Promise<Customer | null> {
   if (!name) return null;
 
-  const supabase = await createClient();
-
   // 전화번호가 있으면 upsert로 원자적 처리
   if (phone) {
     return _findOrCreateCustomer(name, phone);
