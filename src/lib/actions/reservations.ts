@@ -37,7 +37,7 @@ async function _createReservation(formData: {
   description?: string;
   estimated_amount?: number;
   status?: ReservationStatus;
-  reminder_date?: string | null;
+  reminder_at?: string | null;
 }): Promise<{ success: boolean; data?: Reservation; error?: string }> {
   await requireAuth();
 
@@ -59,7 +59,7 @@ async function _createReservation(formData: {
       description: parsed.data.description || null,
       estimated_amount: parsed.data.estimated_amount || 0,
       status: parsed.data.status || 'pending',
-      reminder_date: parsed.data.reminder_date || null,
+      reminder_at: parsed.data.reminder_at || null,
     })
     .select()
     .single();
@@ -82,7 +82,7 @@ async function _updateReservation(
     estimated_amount?: number;
     status?: ReservationStatus;
     sale_id?: string | null;
-    reminder_date?: string | null;
+    reminder_at?: string | null;
   }
 ): Promise<{ success: boolean; error?: string }> {
   await requireAuth();
@@ -99,7 +99,7 @@ async function _updateReservation(
     description: formData.description,
     estimated_amount: formData.estimated_amount,
     status: formData.status,
-    reminder_date: formData.reminder_date,
+    reminder_at: formData.reminder_at,
   });
   if (!parsed.success) {
     return { success: false, error: `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}` };
