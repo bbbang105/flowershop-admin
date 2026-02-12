@@ -2,6 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server';
 import type { PaymentMethod, ReservationChannel, ExpenseCategory } from '@/types/database';
+import { withErrorLogging } from '@/lib/errors';
+import { getMonthDateRange } from '@/lib/utils';
+import { PAYMENT_LABELS, CHANNEL_LABELS, EXPENSE_LABELS } from '@/lib/constants';
 
 export interface CategoryStat {
   name: string;
@@ -39,43 +42,18 @@ export interface ExpenseCategoryStat {
   percentage: number;
 }
 
-const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  cash: '현금',
-  card: '카드',
-  transfer: '계좌이체',
-  naverpay: '네이버페이',
-};
-
-const CHANNEL_LABELS: Record<ReservationChannel, string> = {
-  phone: '전화',
-  kakaotalk: '카카오톡',
-  naver_booking: '네이버예약',
-  road: '로드',
-  other: '기타',
-};
-
-const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  flower_purchase: '꽃 사입',
-  delivery: '배송비',
-  advertising: '광고비',
-  rent: '임대료',
-  utilities: '공과금',
-  supplies: '소모품',
-  other: '기타',
-};
+// 라벨 상수는 @/lib/constants에서 가져옴
 
 
-export async function getCategoryStats(month?: string): Promise<CategoryStat[]> {
+async function _getCategoryStats(month?: string): Promise<CategoryStat[]> {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('sales')
     .select('product_category, amount');
 
   if (month) {
-    const [year, m] = month.split('-').map(Number);
-    const startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, m, 0).toISOString().split('T')[0];
+    const { startDate, endDate } = getMonthDateRange(month);
     query = query.gte('date', startDate).lte('date', endDate);
   }
 
@@ -104,17 +82,17 @@ export async function getCategoryStats(month?: string): Promise<CategoryStat[]> 
     .sort((a, b) => b.amount - a.amount);
 }
 
-export async function getPaymentMethodStats(month?: string): Promise<PaymentMethodStat[]> {
+export const getCategoryStats = withErrorLogging('getCategoryStats', _getCategoryStats);
+
+async function _getPaymentMethodStats(month?: string): Promise<PaymentMethodStat[]> {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('sales')
     .select('payment_method, amount');
 
   if (month) {
-    const [year, m] = month.split('-').map(Number);
-    const startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, m, 0).toISOString().split('T')[0];
+    const { startDate, endDate } = getMonthDateRange(month);
     query = query.gte('date', startDate).lte('date', endDate);
   }
 
@@ -136,7 +114,7 @@ export async function getPaymentMethodStats(month?: string): Promise<PaymentMeth
   return Array.from(methodMap.entries())
     .map(([method, stats]) => ({
       method,
-      label: PAYMENT_METHOD_LABELS[method],
+      label: PAYMENT_LABELS[method] || method,
       count: stats.count,
       amount: stats.amount,
       percentage: totalAmount > 0 ? Math.round((stats.amount / totalAmount) * 100) : 0,
@@ -144,18 +122,18 @@ export async function getPaymentMethodStats(month?: string): Promise<PaymentMeth
     .sort((a, b) => b.amount - a.amount);
 }
 
+export const getPaymentMethodStats = withErrorLogging('getPaymentMethodStats', _getPaymentMethodStats);
 
-export async function getChannelStats(month?: string): Promise<ChannelStat[]> {
+
+async function _getChannelStats(month?: string): Promise<ChannelStat[]> {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('sales')
     .select('reservation_channel, amount');
 
   if (month) {
-    const [year, m] = month.split('-').map(Number);
-    const startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, m, 0).toISOString().split('T')[0];
+    const { startDate, endDate } = getMonthDateRange(month);
     query = query.gte('date', startDate).lte('date', endDate);
   }
 
@@ -185,21 +163,11 @@ export async function getChannelStats(month?: string): Promise<ChannelStat[]> {
     .sort((a, b) => b.amount - a.amount);
 }
 
-export async function getCustomerStats(month?: string): Promise<CustomerStat> {
+export const getChannelStats = withErrorLogging('getChannelStats', _getChannelStats);
+
+async function _getCustomerStats(month?: string): Promise<CustomerStat> {
   const supabase = await createClient();
-  
-  let startDate: string;
-  let endDate: string;
-  
-  if (month) {
-    const [year, m] = month.split('-').map(Number);
-    startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    endDate = new Date(year, m, 0).toISOString().split('T')[0];
-  } else {
-    const now = new Date();
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-  }
+  const { startDate, endDate } = getMonthDateRange(month);
 
   // 해당 월에 구매한 고객들의 연락처 가져오기
   const { data: monthSales, error: salesError } = await supabase
@@ -246,18 +214,18 @@ export async function getCustomerStats(month?: string): Promise<CustomerStat> {
   };
 }
 
+export const getCustomerStats = withErrorLogging('getCustomerStats', _getCustomerStats);
 
-export async function getExpenseCategoryStats(month?: string): Promise<ExpenseCategoryStat[]> {
+
+async function _getExpenseCategoryStats(month?: string): Promise<ExpenseCategoryStat[]> {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('expenses')
     .select('category, total_amount');
 
   if (month) {
-    const [year, m] = month.split('-').map(Number);
-    const startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, m, 0).toISOString().split('T')[0];
+    const { startDate, endDate } = getMonthDateRange(month);
     query = query.gte('date', startDate).lte('date', endDate);
   }
 
@@ -277,12 +245,14 @@ export async function getExpenseCategoryStats(month?: string): Promise<ExpenseCa
   return Array.from(categoryMap.entries())
     .map(([category, amount]) => ({
       category,
-      label: EXPENSE_CATEGORY_LABELS[category],
+      label: EXPENSE_LABELS[category] || category,
       amount,
       percentage: totalAmount > 0 ? Math.round((amount / totalAmount) * 100) : 0,
     }))
     .sort((a, b) => b.amount - a.amount);
 }
+
+export const getExpenseCategoryStats = withErrorLogging('getExpenseCategoryStats', _getExpenseCategoryStats);
 
 export interface MonthlySalesTrend {
   month: string;
@@ -291,7 +261,7 @@ export interface MonthlySalesTrend {
   salesCount: number;
 }
 
-export async function getMonthlySalesTrend(months: number = 6): Promise<MonthlySalesTrend[]> {
+async function _getMonthlySalesTrend(months: number = 6): Promise<MonthlySalesTrend[]> {
   const supabase = await createClient();
   const now = new Date();
 
@@ -331,6 +301,8 @@ export async function getMonthlySalesTrend(months: number = 6): Promise<MonthlyS
   return trends;
 }
 
+export const getMonthlySalesTrend = withErrorLogging('getMonthlySalesTrend', _getMonthlySalesTrend);
+
 export interface DailySalesTrend {
   date: string;
   label: string;
@@ -338,21 +310,9 @@ export interface DailySalesTrend {
   salesCount: number;
 }
 
-export async function getDailySalesTrend(month?: string): Promise<DailySalesTrend[]> {
+async function _getDailySalesTrend(month?: string): Promise<DailySalesTrend[]> {
   const supabase = await createClient();
-  
-  let startDate: string;
-  let endDate: string;
-  
-  if (month) {
-    const [year, m] = month.split('-').map(Number);
-    startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    endDate = new Date(year, m, 0).toISOString().split('T')[0];
-  } else {
-    const now = new Date();
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-  }
+  const { startDate, endDate } = getMonthDateRange(month);
 
   const { data, error } = await supabase
     .from('sales')
@@ -381,3 +341,5 @@ export async function getDailySalesTrend(month?: string): Promise<DailySalesTren
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
+
+export const getDailySalesTrend = withErrorLogging('getDailySalesTrend', _getDailySalesTrend);

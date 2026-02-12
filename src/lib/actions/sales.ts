@@ -6,6 +6,8 @@ import { requireAuth } from '@/lib/auth-guard';
 import { findOrCreateCustomer } from './customers';
 import type { Sale } from '@/types/database';
 import { saleSchema, idsSchema, uuidSchema, validateImageFile } from '@/lib/validations';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
+import { getMonthDateRange } from '@/lib/utils';
 
 const BUCKET_NAME = 'sale-photos';
 
@@ -35,9 +37,9 @@ async function resolveCustomerId(
   return null;
 }
 
-export async function getSales(month?: string) {
+async function _getSales(month?: string) {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('sales')
     .select(`
@@ -45,28 +47,28 @@ export async function getSales(month?: string) {
       customer:customers(id, name, phone)
     `)
     .order('date', { ascending: false });
-  
+
   if (month) {
-    const [year, m] = month.split('-').map(Number);
-    const startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, m, 0).toISOString().split('T')[0];
+    const { startDate, endDate } = getMonthDateRange(month);
     query = query.gte('date', startDate).lte('date', endDate);
   }
-  
+
   const { data, error } = await query;
   if (error) throw error;
-  
+
   // 고객 정보를 매출 데이터에 병합
   const salesWithCustomer = (data || []).map(sale => ({
     ...sale,
     customer_name: sale.customer?.name || sale.customer_name,
     customer_phone: sale.customer?.phone || sale.customer_phone,
   }));
-  
+
   return salesWithCustomer as Sale[];
 }
 
-export async function createSale(formData: FormData) {
+export const getSales = withErrorLogging('getSales', _getSales);
+
+async function _createSale(formData: FormData) {
   await requireAuth();
   const supabase = await createClient();
 
@@ -93,7 +95,7 @@ export async function createSale(formData: FormData) {
     note: formData.get('note') || null,
   });
   if (!parsed.success) {
-    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+    throw new AppError(ErrorCode.VALIDATION, `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
   }
 
   const finalCustomerId = await resolveCustomerId(customerId, customerName, customerPhone);
@@ -126,11 +128,13 @@ export async function createSale(formData: FormData) {
   return data;
 }
 
-export async function updateSale(id: string, formData: FormData) {
+export const createSale = withErrorLogging('createSale', _createSale);
+
+async function _updateSale(id: string, formData: FormData) {
   await requireAuth();
 
   const idParsed = uuidSchema.safeParse(id);
-  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
+  if (!idParsed.success) throw new AppError(ErrorCode.VALIDATION, '올바르지 않은 ID입니다');
 
   const customerName = formData.get('customer_name') as string || null;
   const customerPhone = formData.get('customer_phone') as string || null;
@@ -152,7 +156,7 @@ export async function updateSale(id: string, formData: FormData) {
     note: formData.get('note') || null,
   });
   if (!parsed.success) {
-    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+    throw new AppError(ErrorCode.VALIDATION, `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
   }
 
   const supabase = await createClient();
@@ -177,64 +181,70 @@ export async function updateSale(id: string, formData: FormData) {
   revalidatePath('/');
 }
 
-export async function deleteSale(id: string) {
+export const updateSale = withErrorLogging('updateSale', _updateSale);
+
+async function _deleteSale(id: string) {
   await requireAuth();
   const supabase = await createClient();
   const { error } = await supabase.from('sales').delete().eq('id', id);
   if (error) throw error;
-  
+
   revalidatePath('/sales');
   revalidatePath('/customers');
   revalidatePath('/');
 }
 
-export async function confirmDeposits(ids: string[]) {
+export const deleteSale = withErrorLogging('deleteSale', _deleteSale);
+
+async function _confirmDeposits(ids: string[]) {
   await requireAuth();
   const parsed = idsSchema.safeParse(ids);
-  if (!parsed.success) throw new Error('올바르지 않은 ID 목록입니다');
+  if (!parsed.success) throw new AppError(ErrorCode.VALIDATION, '올바르지 않은 ID 목록입니다');
   const supabase = await createClient();
   const { error } = await supabase
     .from('sales')
     .update({ deposit_status: 'completed', deposited_at: new Date().toISOString() })
     .in('id', ids);
   if (error) throw error;
-  
+
   revalidatePath('/deposits');
   revalidatePath('/');
 }
 
+export const confirmDeposits = withErrorLogging('confirmDeposits', _confirmDeposits);
+
 // Photo upload functions
-export async function uploadSalePhotos(saleId: string, formData: FormData): Promise<string[]> {
+async function _uploadSalePhotos(saleId: string, formData: FormData): Promise<string[]> {
   await requireAuth();
   const supabase = await createClient();
   const files = formData.getAll('photos') as File[];
   const uploadedUrls: string[] = [];
-  
+
   for (const file of files) {
     if (!file.size) continue;
 
     const imageError = validateImageFile(file);
-    if (imageError) throw new Error(imageError);
+    if (imageError) throw new AppError(ErrorCode.VALIDATION, imageError);
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${saleId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    
+
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(fileName, file, {
         cacheControl: '3600',
         upsert: false,
       });
-    
+
     if (error) throw error;
-    
+
     const { data: urlData } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(data.path);
-    
+
     uploadedUrls.push(urlData.publicUrl);
   }
-  
+
   // Update sale with photo URLs
   if (uploadedUrls.length > 0) {
     const { data: sale } = await supabase
@@ -242,27 +252,29 @@ export async function uploadSalePhotos(saleId: string, formData: FormData): Prom
       .select('photos')
       .eq('id', saleId)
       .single();
-    
+
     const existingPhotos = sale?.photos || [];
     const allPhotos = [...existingPhotos, ...uploadedUrls];
-    
+
     const { error: updateError } = await supabase
       .from('sales')
       .update({ photos: allPhotos })
       .eq('id', saleId);
-    
+
     if (updateError) throw updateError;
   }
-  
+
   revalidatePath('/sales');
   revalidatePath('/customers');
   return uploadedUrls;
 }
 
-export async function deleteSalePhoto(saleId: string, photoUrl: string): Promise<void> {
+export const uploadSalePhotos = withErrorLogging('uploadSalePhotos', _uploadSalePhotos);
+
+async function _deleteSalePhoto(saleId: string, photoUrl: string): Promise<void> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   // Extract path from URL
   const url = new URL(photoUrl);
   const pathParts = url.pathname.split(`/storage/v1/object/public/${BUCKET_NAME}/`);
@@ -270,14 +282,14 @@ export async function deleteSalePhoto(saleId: string, photoUrl: string): Promise
     const filePath = pathParts[1];
     await supabase.storage.from(BUCKET_NAME).remove([filePath]);
   }
-  
+
   // Update sale to remove photo URL
   const { data: sale } = await supabase
     .from('sales')
     .select('photos')
     .eq('id', saleId)
     .single();
-  
+
   if (sale?.photos) {
     const updatedPhotos = sale.photos.filter((p: string) => p !== photoUrl);
     await supabase
@@ -285,12 +297,14 @@ export async function deleteSalePhoto(saleId: string, photoUrl: string): Promise
       .update({ photos: updatedPhotos })
       .eq('id', saleId);
   }
-  
+
   revalidatePath('/sales');
   revalidatePath('/customers');
 }
 
-export async function getSaleById(id: string): Promise<Sale | null> {
+export const deleteSalePhoto = withErrorLogging('deleteSalePhoto', _deleteSalePhoto);
+
+async function _getSaleById(id: string): Promise<Sale | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('sales')
@@ -300,9 +314,9 @@ export async function getSaleById(id: string): Promise<Sale | null> {
     `)
     .eq('id', id)
     .single();
-  
+
   if (error) return null;
-  
+
   // 고객 정보 병합
   return {
     ...data,
@@ -310,3 +324,5 @@ export async function getSaleById(id: string): Promise<Sale | null> {
     customer_phone: data.customer?.phone || data.customer_phone,
   } as Sale;
 }
+
+export const getSaleById = withErrorLogging('getSaleById', _getSaleById);

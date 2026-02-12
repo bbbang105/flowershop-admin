@@ -5,8 +5,9 @@ import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth-guard';
 import type { Customer, CustomerGrade } from '@/types/database';
 import { customerSchema, uuidSchema, searchQuerySchema, customerGradeSchema } from '@/lib/validations';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 
-export async function getCustomers() {
+async function _getCustomers() {
   const supabase = await createClient();
 
   // 고객 + 매출 통계를 DB에서 집계 (RPC)
@@ -91,7 +92,9 @@ export async function getCustomers() {
   return customersWithStats as Customer[];
 }
 
-export async function getCustomerById(id: string) {
+export const getCustomers = withErrorLogging('getCustomers', _getCustomers);
+
+async function _getCustomerById(id: string) {
   const supabase = await createClient();
 
   // 고객 정보 + 매출 통계를 병렬로 조회
@@ -141,7 +144,14 @@ export async function getCustomerById(id: string) {
   } as Customer;
 }
 
-export async function createCustomer(formData: FormData) {
+export const getCustomerById = withErrorLogging('getCustomerById', _getCustomerById);
+
+function parseGender(formData: FormData): 'male' | 'female' | null {
+  const raw = formData.get('gender');
+  return (raw === 'male' || raw === 'female') ? raw : null;
+}
+
+async function _createCustomer(formData: FormData) {
   await requireAuth();
   const supabase = await createClient();
 
@@ -149,16 +159,18 @@ export async function createCustomer(formData: FormData) {
     name: formData.get('name'),
     phone: formData.get('phone'),
     grade: formData.get('grade') || 'new',
+    gender: parseGender(formData),
     note: formData.get('note') || null,
   });
   if (!parsed.success) {
-    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+    throw new AppError(ErrorCode.VALIDATION, `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
   }
 
   const customer = {
     name: parsed.data.name,
     phone: parsed.data.phone,
     grade: parsed.data.grade || 'new',
+    gender: parsed.data.gender ?? null,
     note: parsed.data.note || null,
   };
 
@@ -169,20 +181,23 @@ export async function createCustomer(formData: FormData) {
   return data;
 }
 
-export async function updateCustomer(id: string, formData: FormData) {
+export const createCustomer = withErrorLogging('createCustomer', _createCustomer);
+
+async function _updateCustomer(id: string, formData: FormData) {
   await requireAuth();
 
   const idParsed = uuidSchema.safeParse(id);
-  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
+  if (!idParsed.success) throw new AppError(ErrorCode.VALIDATION, '올바르지 않은 ID입니다');
 
   const parsed = customerSchema.partial().safeParse({
     name: formData.get('name') || undefined,
     phone: formData.get('phone') || undefined,
     grade: formData.get('grade') || undefined,
+    gender: parseGender(formData),
     note: formData.get('note') || null,
   });
   if (!parsed.success) {
-    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+    throw new AppError(ErrorCode.VALIDATION, `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
   }
 
   const supabase = await createClient();
@@ -193,13 +208,15 @@ export async function updateCustomer(id: string, formData: FormData) {
   revalidatePath(`/customers/${id}`);
 }
 
-export async function updateCustomerGrade(id: string, grade: CustomerGrade) {
+export const updateCustomer = withErrorLogging('updateCustomer', _updateCustomer);
+
+async function _updateCustomerGrade(id: string, grade: CustomerGrade) {
   await requireAuth();
 
   const idParsed = uuidSchema.safeParse(id);
-  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
+  if (!idParsed.success) throw new AppError(ErrorCode.VALIDATION, '올바르지 않은 ID입니다');
   const gradeParsed = customerGradeSchema.safeParse(grade);
-  if (!gradeParsed.success) throw new Error('올바르지 않은 등급입니다');
+  if (!gradeParsed.success) throw new AppError(ErrorCode.VALIDATION, '올바르지 않은 등급입니다');
 
   const supabase = await createClient();
   const { error } = await supabase.from('customers').update({ grade: gradeParsed.data }).eq('id', id);
@@ -209,18 +226,22 @@ export async function updateCustomerGrade(id: string, grade: CustomerGrade) {
   revalidatePath(`/customers/${id}`);
 }
 
-export async function deleteCustomer(id: string) {
+export const updateCustomerGrade = withErrorLogging('updateCustomerGrade', _updateCustomerGrade);
+
+async function _deleteCustomer(id: string) {
   await requireAuth();
   const idParsed = uuidSchema.safeParse(id);
-  if (!idParsed.success) throw new Error('올바르지 않은 ID입니다');
+  if (!idParsed.success) throw new AppError(ErrorCode.VALIDATION, '올바르지 않은 ID입니다');
   const supabase = await createClient();
   const { error } = await supabase.from('customers').delete().eq('id', id);
   if (error) throw error;
-  
+
   revalidatePath('/customers');
 }
 
-export async function findOrCreateCustomer(name: string, phone: string) {
+export const deleteCustomer = withErrorLogging('deleteCustomer', _deleteCustomer);
+
+async function _findOrCreateCustomer(name: string, phone: string) {
   const supabase = await createClient();
 
   // upsert로 레이스 컨디션 방지 (phone이 unique 제약)
@@ -247,7 +268,9 @@ export async function findOrCreateCustomer(name: string, phone: string) {
   return data as Customer;
 }
 
-export async function getCustomerSales(customerId: string) {
+export const findOrCreateCustomer = withErrorLogging('findOrCreateCustomer', _findOrCreateCustomer);
+
+async function _getCustomerSales(customerId: string) {
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -260,8 +283,10 @@ export async function getCustomerSales(customerId: string) {
   return data;
 }
 
+export const getCustomerSales = withErrorLogging('getCustomerSales', _getCustomerSales);
+
 // 이름으로 고객 검색 (LIKE)
-export async function searchCustomersByName(query: string) {
+async function _searchCustomersByName(query: string) {
   if (!query || query.length < 1) return [];
 
   const supabase = await createClient();
@@ -280,8 +305,10 @@ export async function searchCustomersByName(query: string) {
   return data as Pick<Customer, 'id' | 'name' | 'phone' | 'grade'>[];
 }
 
+export const searchCustomersByName = withErrorLogging('searchCustomersByName', _searchCustomersByName);
+
 // 연락처 중복 체크
-export async function checkPhoneDuplicate(phone: string, excludeId?: string) {
+async function _checkPhoneDuplicate(phone: string, excludeId?: string) {
   if (!phone || phone.length < 10) return null;
 
   const supabase = await createClient();
@@ -320,17 +347,19 @@ export async function checkPhoneDuplicate(phone: string, excludeId?: string) {
   return null;
 }
 
-// 고객 생성 또는 기존 고객 반환 (이름+전화번호로)
-export async function getOrCreateCustomer(name: string, phone?: string): Promise<Customer | null> {
-  if (!name) return null;
+export const checkPhoneDuplicate = withErrorLogging('checkPhoneDuplicate', _checkPhoneDuplicate);
 
-  const supabase = await createClient();
+// 고객 생성 또는 기존 고객 반환 (이름+전화번호로)
+async function _getOrCreateCustomer(name: string, phone?: string): Promise<Customer | null> {
+  if (!name) return null;
 
   // 전화번호가 있으면 upsert로 원자적 처리
   if (phone) {
-    return findOrCreateCustomer(name, phone);
+    return _findOrCreateCustomer(name, phone);
   }
 
   // 전화번호 없이는 고객 생성 불가 (phone이 unique 필수 필드)
   return null;
 }
+
+export const getOrCreateCustomer = withErrorLogging('getOrCreateCustomer', _getOrCreateCustomer);

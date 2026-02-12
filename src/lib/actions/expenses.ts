@@ -5,40 +5,44 @@ import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth-guard';
 import type { Expense } from '@/types/database';
 import { expenseSchema } from '@/lib/validations';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
+import { getMonthDateRange } from '@/lib/utils';
 
-export async function getExpenses(month?: string) {
+async function _getExpenses(month?: string) {
   const supabase = await createClient();
-  
+
   let query = supabase
     .from('expenses')
     .select('*')
     .order('date', { ascending: false });
-  
+
   if (month) {
-    const [year, m] = month.split('-').map(Number);
-    const startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, m, 0).toISOString().split('T')[0];
+    const { startDate, endDate } = getMonthDateRange(month);
     query = query.gte('date', startDate).lte('date', endDate);
   }
-  
+
   const { data, error } = await query;
   if (error) throw error;
   return data as Expense[];
 }
 
-export async function getExpenseById(id: string): Promise<Expense | null> {
+export const getExpenses = withErrorLogging('getExpenses', _getExpenses);
+
+async function _getExpenseById(id: string): Promise<Expense | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('expenses')
     .select('*')
     .eq('id', id)
     .single();
-  
+
   if (error) return null;
   return data as Expense;
 }
 
-export async function createExpense(formData: FormData) {
+export const getExpenseById = withErrorLogging('getExpenseById', _getExpenseById);
+
+async function _createExpense(formData: FormData) {
   await requireAuth();
   const supabase = await createClient();
 
@@ -57,7 +61,7 @@ export async function createExpense(formData: FormData) {
     note: formData.get('note') || null,
   });
   if (!parsed.success) {
-    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+    throw new AppError(ErrorCode.VALIDATION, `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
   }
 
   const expense = {
@@ -75,12 +79,14 @@ export async function createExpense(formData: FormData) {
 
   const { data, error } = await supabase.from('expenses').insert(expense).select().single();
   if (error) throw error;
-  
+
   revalidatePath('/expenses');
   return data;
 }
 
-export async function updateExpense(id: string, formData: FormData) {
+export const createExpense = withErrorLogging('createExpense', _createExpense);
+
+async function _updateExpense(id: string, formData: FormData) {
   await requireAuth();
   const supabase = await createClient();
 
@@ -99,7 +105,7 @@ export async function updateExpense(id: string, formData: FormData) {
     note: formData.get('note') || null,
   });
   if (!parsed.success) {
-    throw new Error(`입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
+    throw new AppError(ErrorCode.VALIDATION, `입력값이 올바르지 않습니다: ${parsed.error.issues[0]?.message}`);
   }
 
   const updates = {
@@ -117,15 +123,19 @@ export async function updateExpense(id: string, formData: FormData) {
 
   const { error } = await supabase.from('expenses').update(updates).eq('id', id);
   if (error) throw error;
-  
+
   revalidatePath('/expenses');
 }
 
-export async function deleteExpense(id: string) {
+export const updateExpense = withErrorLogging('updateExpense', _updateExpense);
+
+async function _deleteExpense(id: string) {
   await requireAuth();
   const supabase = await createClient();
   const { error } = await supabase.from('expenses').delete().eq('id', id);
   if (error) throw error;
-  
+
   revalidatePath('/expenses');
 }
+
+export const deleteExpense = withErrorLogging('deleteExpense', _deleteExpense);

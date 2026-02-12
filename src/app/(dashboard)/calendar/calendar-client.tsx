@@ -16,7 +16,7 @@ import {
   isToday,
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, X, Pencil, Trash2, Loader2, ShoppingBag, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Pencil, Trash2, Loader2, ShoppingBag, ExternalLink, BellRing } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { CHANNEL_LABELS } from '@/lib/constants';
 
 import {
   getReservations,
@@ -58,9 +59,8 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('ko-KR').format(amount) + '원';
 }
 
-const channelLabels: Record<string, string> = {
-  phone: '전화', kakaotalk: '카카오톡', naver_booking: '네이버예약', road: '로드', other: '기타',
-};
+// channelLabels → CHANNEL_LABELS (@/lib/constants)
+const channelLabels = CHANNEL_LABELS;
 
 const statusColors: Record<ReservationStatus, string> = {
   pending: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
@@ -95,6 +95,8 @@ export function CalendarClient() {
     description: '',
     estimated_amount: '',
     status: 'pending' as ReservationStatus,
+    reminder_date: '',
+    reminder_time: '',
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -120,9 +122,11 @@ export function CalendarClient() {
 
   const fetchReservations = useCallback(async () => {
     setIsLoading(true);
-    const result = await getReservations(monthStr);
-    if (result.success && result.data) {
-      setReservations(result.data);
+    try {
+      const data = await getReservations(monthStr);
+      setReservations(data);
+    } catch {
+      toast.error('예약 목록을 불러오지 못했습니다');
     }
     setIsLoading(false);
   }, [monthStr]);
@@ -222,14 +226,13 @@ export function CalendarClient() {
       formData.set('customer_phone', saleTarget.customer_phone);
     }
 
-    const result = await convertReservationToSale(saleTarget.id, formData);
-
-    if (result.success) {
+    try {
+      await convertReservationToSale(saleTarget.id, formData);
       toast.success('매출이 등록되고 예약이 완료 처리되었습니다');
       setSaleTarget(null);
       fetchReservations();
-    } else {
-      toast.error(result.error || '매출 등록에 실패했습니다');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : '매출 등록에 실패했습니다');
     }
 
     setIsSaleSubmitting(false);
@@ -277,6 +280,8 @@ export function CalendarClient() {
       description: '',
       estimated_amount: '',
       status: 'pending',
+      reminder_date: '',
+      reminder_time: '',
     });
     setEditingId(null);
     setShowForm(false);
@@ -292,6 +297,8 @@ export function CalendarClient() {
       description: reservation.description || '',
       estimated_amount: reservation.estimated_amount ? String(reservation.estimated_amount) : '',
       status: reservation.status as ReservationStatus,
+      reminder_date: reservation.reminder_at ? reservation.reminder_at.slice(0, 10) : '',
+      reminder_time: reservation.reminder_at ? reservation.reminder_at.slice(11, 16) : '',
     });
     setShowForm(true);
   }
@@ -306,42 +313,45 @@ export function CalendarClient() {
     setIsSaving(true);
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-    if (editingId) {
-      const result = await updateReservation(editingId, {
-        date: dateStr,
-        time: formData.time || null,
-        customer_name: formData.customer_name,
-        customer_phone: formData.customer_phone || null,
-        title: formData.title,
-        description: formData.description || null,
-        estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : 0,
-        status: formData.status,
-      });
-      if (result.success) {
+    // 리마인더 날짜+시간 → ISO 8601 (KST +09:00)
+    let reminderAt: string | null = null;
+    if (formData.reminder_date) {
+      const time = formData.reminder_time || '08:00';
+      reminderAt = `${formData.reminder_date}T${time}:00+09:00`;
+    }
+
+    try {
+      if (editingId) {
+        await updateReservation(editingId, {
+          date: dateStr,
+          time: formData.time || null,
+          customer_name: formData.customer_name,
+          customer_phone: formData.customer_phone || null,
+          title: formData.title,
+          description: formData.description || null,
+          estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : 0,
+          status: formData.status,
+          reminder_at: reminderAt,
+        });
         toast.success('예약이 수정되었습니다');
-        resetForm();
-        fetchReservations();
       } else {
-        toast.error(result.error || '수정 실패');
-      }
-    } else {
-      const result = await createReservation({
-        date: dateStr,
-        time: formData.time || undefined,
-        customer_name: formData.customer_name,
-        title: formData.title,
-        description: formData.description || undefined,
-        estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : undefined,
-        customer_phone: formData.customer_phone || undefined,
-        status: formData.status,
-      });
-      if (result.success) {
+        await createReservation({
+          date: dateStr,
+          time: formData.time || undefined,
+          customer_name: formData.customer_name,
+          title: formData.title,
+          description: formData.description || undefined,
+          estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : undefined,
+          customer_phone: formData.customer_phone || undefined,
+          status: formData.status,
+          reminder_at: reminderAt,
+        });
         toast.success('예약이 등록되었습니다');
-        resetForm();
-        fetchReservations();
-      } else {
-        toast.error(result.error || '등록 실패');
       }
+      resetForm();
+      fetchReservations();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : (editingId ? '수정 실패' : '등록 실패'));
     }
     setIsSaving(false);
   }
@@ -349,13 +359,13 @@ export function CalendarClient() {
   async function handleDelete() {
     if (!deleteTarget) return;
     setIsDeleting(true);
-    const result = await deleteReservation(deleteTarget.id);
-    if (result.success) {
+    try {
+      await deleteReservation(deleteTarget.id);
       toast.success('예약이 삭제되었습니다');
       setDeleteTarget(null);
       fetchReservations();
-    } else {
-      toast.error(result.error || '삭제 실패');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : '삭제 실패');
     }
     setIsDeleting(false);
   }
@@ -567,6 +577,34 @@ export function CalendarClient() {
                     <p className="text-[10px] text-muted-foreground">대기 → 확정 → 완료 순으로 변경해주세요</p>
                   </div>
                   <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      <BellRing className="w-3 h-3 inline mr-1" />
+                      리마인더 알림
+                    </Label>
+                    <div className="grid grid-cols-[1fr_90px] gap-2">
+                      <Input
+                        type="date"
+                        value={formData.reminder_date}
+                        onChange={(e) => setFormData({ ...formData, reminder_date: e.target.value })}
+                        className="h-8 text-sm"
+                        aria-label="리마인더 알림 날짜"
+                      />
+                      <Input
+                        type="time"
+                        value={formData.reminder_time}
+                        onChange={(e) => setFormData({ ...formData, reminder_time: e.target.value })}
+                        className="h-8 text-sm"
+                        aria-label="리마인더 알림 시간"
+                        disabled={!formData.reminder_date}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {formData.reminder_date
+                        ? `${formData.reminder_date} ${formData.reminder_time || '08:00'}에 푸시 알림`
+                        : '날짜를 선택하면 해당 시간에 푸시 알림을 받아요 (기본 오전 8시)'}
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">메모</Label>
                     <textarea
                       value={formData.description}
@@ -636,6 +674,12 @@ export function CalendarClient() {
                         )}
                         {r.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.description}</p>
+                        )}
+                        {r.reminder_at && (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <BellRing className="w-3 h-3" />
+                            {r.reminder_at.slice(0, 10)} {r.reminder_at.slice(11, 16)} 알림
+                          </p>
                         )}
 
                         {/* 매출 등록 버튼 또는 매출 확인 링크 */}

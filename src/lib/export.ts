@@ -4,8 +4,7 @@ export interface ExportColumn<T = Record<string, unknown>> {
   format?: 'currency' | 'date' | 'text';
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface ExportConfig<T = any> {
+export interface ExportConfig<T = Record<string, unknown>> {
   filename: string;
   title?: string;
   columns: ExportColumn<T>[];

@@ -3,22 +3,22 @@
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth-guard';
 import { PhotoTag } from '@/types/database';
+import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 
-export async function getPhotoTags(): Promise<PhotoTag[]> {
+async function _getPhotoTags(): Promise<PhotoTag[]> {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from('photo_tags')
     .select('*')
     .order('name');
-  
-  if (error) {
-    console.error('Error fetching photo tags:', error);
-    return [];
-  }
-  
+
+  if (error) throw error;
+
   return data || [];
 }
+
+export const getPhotoTags = withErrorLogging('getPhotoTags', _getPhotoTags);
 
 // 랜덤 색상 생성
 const TAG_COLORS = [
@@ -30,15 +30,15 @@ function getRandomColor(): string {
   return TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
 }
 
-export async function createPhotoTag(name: string, color?: string): Promise<PhotoTag | null> {
+async function _createPhotoTag(name: string, color?: string): Promise<PhotoTag | null> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   const trimmedName = name.trim();
   if (!trimmedName) {
-    throw new Error('태그 이름을 입력해주세요');
+    throw new AppError(ErrorCode.VALIDATION, '태그 이름을 입력해주세요');
   }
-  
+
   const { data, error } = await supabase
     .from('photo_tags')
     .insert({
@@ -47,59 +47,61 @@ export async function createPhotoTag(name: string, color?: string): Promise<Phot
     })
     .select()
     .single();
-  
+
   if (error) {
     if (error.code === '23505') {
-      throw new Error('이미 존재하는 태그입니다');
+      throw new AppError(ErrorCode.DUPLICATE, '이미 존재하는 태그입니다');
     }
-    console.error('Error creating photo tag:', error);
-    throw new Error('태그 생성에 실패했습니다');
+    throw error;
   }
-  
+
   return data;
 }
 
-export async function updatePhotoTag(id: string, name: string, color: string): Promise<void> {
+export const createPhotoTag = withErrorLogging('createPhotoTag', _createPhotoTag);
+
+async function _updatePhotoTag(id: string, name: string, color: string): Promise<void> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   const trimmedName = name.trim();
   if (!trimmedName) {
-    throw new Error('태그 이름을 입력해주세요');
+    throw new AppError(ErrorCode.VALIDATION, '태그 이름을 입력해주세요');
   }
-  
+
   const { error } = await supabase
     .from('photo_tags')
     .update({ name: trimmedName, color })
     .eq('id', id);
-  
+
   if (error) {
     if (error.code === '23505') {
-      throw new Error('이미 존재하는 태그입니다');
+      throw new AppError(ErrorCode.DUPLICATE, '이미 존재하는 태그입니다');
     }
-    console.error('Error updating photo tag:', error);
-    throw new Error('태그 수정에 실패했습니다');
+    throw error;
   }
 }
 
-export async function deletePhotoTag(id: string): Promise<void> {
+export const updatePhotoTag = withErrorLogging('updatePhotoTag', _updatePhotoTag);
+
+async function _deletePhotoTag(id: string): Promise<void> {
   await requireAuth();
   const supabase = await createClient();
-  
+
   // 먼저 태그 이름 가져오기
   const { data: tag } = await supabase
     .from('photo_tags')
     .select('name')
     .eq('id', id)
     .single();
-  
+
   if (tag) {
     // 해당 태그를 사용하는 모든 카드에서 태그 제거
     const { data: cards } = await supabase
       .from('photo_cards')
       .select('id, tags')
       .contains('tags', [tag.name]);
-    
+
     if (cards && cards.length > 0) {
       for (const card of cards) {
         const newTags = (card.tags as string[]).filter(t => t !== tag.name);
@@ -110,15 +112,14 @@ export async function deletePhotoTag(id: string): Promise<void> {
       }
     }
   }
-  
+
   // 태그 삭제
   const { error } = await supabase
     .from('photo_tags')
     .delete()
     .eq('id', id);
-  
-  if (error) {
-    console.error('Error deleting photo tag:', error);
-    throw new Error('태그 삭제에 실패했습니다');
-  }
+
+  if (error) throw error;
 }
+
+export const deletePhotoTag = withErrorLogging('deletePhotoTag', _deletePhotoTag);

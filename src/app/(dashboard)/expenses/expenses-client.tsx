@@ -122,14 +122,14 @@ export function ExpensesClient({
     return { total, byCategory };
   }, [filteredExpenses]);
 
-  const getExportConfig = useCallback((): ExportConfig => ({
+  const getExportConfig = useCallback((): ExportConfig<Expense> => ({
     filename: `지출_${currentYear}-${String(currentMonth).padStart(2, '0')}`,
     title: `지출 내역 (${currentYear}년 ${currentMonth}월)`,
     columns: [
       { header: '날짜', accessor: (e) => String(e.date || '') },
-      { header: '카테고리', accessor: (e) => categoryLabels[e.category as string] || String(e.category || '') },
+      { header: '카테고리', accessor: (e) => categoryLabels[e.category] || e.category || '' },
       { header: '금액', accessor: (e) => Number(e.total_amount) || 0, format: 'currency' },
-      { header: '결제방법', accessor: (e) => paymentLabels[e.payment_method as string] || String(e.payment_method || '') },
+      { header: '결제방법', accessor: (e) => paymentLabels[e.payment_method] || e.payment_method || '' },
       { header: '수량', accessor: (e) => Number(e.quantity) || 0 },
       { header: '품목명', accessor: (e) => String(e.item_name || '') },
       { header: '거래처', accessor: (e) => String(e.vendor || '') },

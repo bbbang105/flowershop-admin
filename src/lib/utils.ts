@@ -77,6 +77,22 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+// 월 기준 시작일/종료일 계산 (Server Action에서 공통 사용)
+export function getMonthDateRange(month?: string): { startDate: string; endDate: string } {
+  if (month) {
+    const [year, m] = month.split('-').map(Number);
+    return {
+      startDate: new Date(year, m - 1, 1).toISOString().split('T')[0],
+      endDate: new Date(year, m, 0).toISOString().split('T')[0],
+    };
+  }
+  const now = new Date();
+  return {
+    startDate: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
+    endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0],
+  };
+}
+
 // 전화번호 포맷팅 (010-1234-5678 형태)
 export function formatPhoneNumber(value: string): string {
   const numbers = value.replace(/[^0-9]/g, '');
