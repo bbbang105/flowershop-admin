@@ -40,6 +40,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { CHANNEL_LABELS } from '@/lib/constants';
 
 import {
   getReservations,
@@ -58,9 +59,8 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('ko-KR').format(amount) + '원';
 }
 
-const channelLabels: Record<string, string> = {
-  phone: '전화', kakaotalk: '카카오톡', naver_booking: '네이버예약', road: '로드', other: '기타',
-};
+// channelLabels → CHANNEL_LABELS (@/lib/constants)
+const channelLabels = CHANNEL_LABELS;
 
 const statusColors: Record<ReservationStatus, string> = {
   pending: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
@@ -122,9 +122,11 @@ export function CalendarClient() {
 
   const fetchReservations = useCallback(async () => {
     setIsLoading(true);
-    const result = await getReservations(monthStr);
-    if (result.success && result.data) {
-      setReservations(result.data);
+    try {
+      const data = await getReservations(monthStr);
+      setReservations(data);
+    } catch {
+      toast.error('예약 목록을 불러오지 못했습니다');
     }
     setIsLoading(false);
   }, [monthStr]);
@@ -224,14 +226,13 @@ export function CalendarClient() {
       formData.set('customer_phone', saleTarget.customer_phone);
     }
 
-    const result = await convertReservationToSale(saleTarget.id, formData);
-
-    if (result.success) {
+    try {
+      await convertReservationToSale(saleTarget.id, formData);
       toast.success('매출이 등록되고 예약이 완료 처리되었습니다');
       setSaleTarget(null);
       fetchReservations();
-    } else {
-      toast.error(result.error || '매출 등록에 실패했습니다');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : '매출 등록에 실패했습니다');
     }
 
     setIsSaleSubmitting(false);
@@ -319,44 +320,38 @@ export function CalendarClient() {
       reminderAt = `${formData.reminder_date}T${time}:00+09:00`;
     }
 
-    if (editingId) {
-      const result = await updateReservation(editingId, {
-        date: dateStr,
-        time: formData.time || null,
-        customer_name: formData.customer_name,
-        customer_phone: formData.customer_phone || null,
-        title: formData.title,
-        description: formData.description || null,
-        estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : 0,
-        status: formData.status,
-        reminder_at: reminderAt,
-      });
-      if (result.success) {
+    try {
+      if (editingId) {
+        await updateReservation(editingId, {
+          date: dateStr,
+          time: formData.time || null,
+          customer_name: formData.customer_name,
+          customer_phone: formData.customer_phone || null,
+          title: formData.title,
+          description: formData.description || null,
+          estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : 0,
+          status: formData.status,
+          reminder_at: reminderAt,
+        });
         toast.success('예약이 수정되었습니다');
-        resetForm();
-        fetchReservations();
       } else {
-        toast.error(result.error || '수정 실패');
-      }
-    } else {
-      const result = await createReservation({
-        date: dateStr,
-        time: formData.time || undefined,
-        customer_name: formData.customer_name,
-        title: formData.title,
-        description: formData.description || undefined,
-        estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : undefined,
-        customer_phone: formData.customer_phone || undefined,
-        status: formData.status,
-        reminder_at: reminderAt,
-      });
-      if (result.success) {
+        await createReservation({
+          date: dateStr,
+          time: formData.time || undefined,
+          customer_name: formData.customer_name,
+          title: formData.title,
+          description: formData.description || undefined,
+          estimated_amount: formData.estimated_amount ? parseInt(formData.estimated_amount) : undefined,
+          customer_phone: formData.customer_phone || undefined,
+          status: formData.status,
+          reminder_at: reminderAt,
+        });
         toast.success('예약이 등록되었습니다');
-        resetForm();
-        fetchReservations();
-      } else {
-        toast.error(result.error || '등록 실패');
       }
+      resetForm();
+      fetchReservations();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : (editingId ? '수정 실패' : '등록 실패'));
     }
     setIsSaving(false);
   }
@@ -364,13 +359,13 @@ export function CalendarClient() {
   async function handleDelete() {
     if (!deleteTarget) return;
     setIsDeleting(true);
-    const result = await deleteReservation(deleteTarget.id);
-    if (result.success) {
+    try {
+      await deleteReservation(deleteTarget.id);
       toast.success('예약이 삭제되었습니다');
       setDeleteTarget(null);
       fetchReservations();
-    } else {
-      toast.error(result.error || '삭제 실패');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : '삭제 실패');
     }
     setIsDeleting(false);
   }
