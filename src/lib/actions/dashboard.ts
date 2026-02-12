@@ -10,6 +10,8 @@ import type {
   ExpenseCategoryStat,
 } from './statistics';
 import { withErrorLogging } from '@/lib/errors';
+import { getMonthDateRange } from '@/lib/utils';
+import { PAYMENT_LABELS, CHANNEL_LABELS, EXPENSE_LABELS } from '@/lib/constants';
 
 export interface DashboardSummary {
   totalAmount: number;
@@ -93,50 +95,6 @@ async function _getRecentSales(limit: number = 10): Promise<Sale[]> {
 
 export const getRecentSales = withErrorLogging('getRecentSales', _getRecentSales);
 
-async function _getTodayReservations(): Promise<Reservation[]> {
-  const supabase = await createClient();
-  const today = new Date().toISOString().split('T')[0];
-
-  const { data, error } = await supabase
-    .from('reservations')
-    .select('*')
-    .eq('date', today)
-    .order('time', { nullsFirst: false });
-
-  if (error) throw error;
-  return (data || []) as Reservation[];
-}
-
-export const getTodayReservations = withErrorLogging('getTodayReservations', _getTodayReservations);
-
-async function _getMonthExpenseTotal(month?: string): Promise<number> {
-  const supabase = await createClient();
-
-  let startDate: string;
-  let endDate: string;
-
-  if (month) {
-    const [year, m] = month.split('-').map(Number);
-    startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    endDate = new Date(year, m, 0).toISOString().split('T')[0];
-  } else {
-    const now = new Date();
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-  }
-
-  const { data, error } = await supabase
-    .from('expenses')
-    .select('total_amount')
-    .gte('date', startDate)
-    .lte('date', endDate);
-
-  if (error) throw error;
-  return (data || []).reduce((sum, e) => sum + e.total_amount, 0);
-}
-
-export const getMonthExpenseTotal = withErrorLogging('getMonthExpenseTotal', _getMonthExpenseTotal);
-
 async function _getMonthSummary(month?: string): Promise<DashboardSummary> {
   const supabase = await createClient();
 
@@ -193,20 +151,7 @@ function buildSummary(sales: { amount: number; payment_method: string; deposit_s
   return summary;
 }
 
-function getMonthRange(month?: string): { startDate: string; endDate: string } {
-  if (month) {
-    const [year, m] = month.split('-').map(Number);
-    return {
-      startDate: new Date(year, m - 1, 1).toISOString().split('T')[0],
-      endDate: new Date(year, m, 0).toISOString().split('T')[0],
-    };
-  }
-  const now = new Date();
-  return {
-    startDate: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0],
-  };
-}
+// getMonthDateRange를 @/lib/utils에서 가져옴
 
 export interface DashboardTodayData {
   summary: DashboardSummary;
@@ -242,16 +187,7 @@ async function _getDashboardTodayData(): Promise<DashboardTodayData> {
 
 export const getDashboardTodayData = withErrorLogging('getDashboardTodayData', _getDashboardTodayData);
 
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: '현금', card: '카드', transfer: '계좌이체', naverpay: '네이버페이', kakaopay: '카카오페이',
-};
-const CHANNEL_LABELS: Record<string, string> = {
-  phone: '전화', kakaotalk: '카카오톡', naver_booking: '네이버예약', road: '로드', other: '기타',
-};
-const EXPENSE_LABELS: Record<string, string> = {
-  flower_purchase: '꽃 사입', delivery: '배송비', advertising: '광고비',
-  rent: '임대료', utilities: '공과금', supplies: '소모품', other: '기타',
-};
+// 라벨 상수는 @/lib/constants에서 가져옴
 
 export interface DashboardMonthData {
   summary: DashboardSummary;
@@ -266,7 +202,7 @@ export interface DashboardMonthData {
 /** 월별 대시보드 데이터를 단일 Server Action으로 조회 (2~3개 DB 쿼리) */
 async function _getDashboardMonthData(month?: string): Promise<DashboardMonthData> {
   const supabase = await createClient();
-  const { startDate, endDate } = getMonthRange(month);
+  const { startDate, endDate } = getMonthDateRange(month);
 
   const [salesRes, expensesRes] = await Promise.all([
     supabase.from('sales')

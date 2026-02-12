@@ -6,6 +6,7 @@ import { requireAuth } from '@/lib/auth-guard';
 import type { Expense } from '@/types/database';
 import { expenseSchema } from '@/lib/validations';
 import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
+import { getMonthDateRange } from '@/lib/utils';
 
 async function _getExpenses(month?: string) {
   const supabase = await createClient();
@@ -16,9 +17,7 @@ async function _getExpenses(month?: string) {
     .order('date', { ascending: false });
 
   if (month) {
-    const [year, m] = month.split('-').map(Number);
-    const startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, m, 0).toISOString().split('T')[0];
+    const { startDate, endDate } = getMonthDateRange(month);
     query = query.gte('date', startDate).lte('date', endDate);
   }
 

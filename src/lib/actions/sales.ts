@@ -7,6 +7,7 @@ import { findOrCreateCustomer } from './customers';
 import type { Sale } from '@/types/database';
 import { saleSchema, idsSchema, uuidSchema, validateImageFile } from '@/lib/validations';
 import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
+import { getMonthDateRange } from '@/lib/utils';
 
 const BUCKET_NAME = 'sale-photos';
 
@@ -48,9 +49,7 @@ async function _getSales(month?: string) {
     .order('date', { ascending: false });
 
   if (month) {
-    const [year, m] = month.split('-').map(Number);
-    const startDate = new Date(year, m - 1, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, m, 0).toISOString().split('T')[0];
+    const { startDate, endDate } = getMonthDateRange(month);
     query = query.gte('date', startDate).lte('date', endDate);
   }
 

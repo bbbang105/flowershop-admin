@@ -15,7 +15,8 @@ import { toast } from 'sonner';
 import type { ExportConfig } from '@/lib/export';
 
 interface ExportButtonProps {
-  getExportConfig: () => ExportConfig;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getExportConfig: () => ExportConfig<any>;
   disabled?: boolean;
 }
 

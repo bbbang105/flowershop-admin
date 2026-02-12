@@ -5,6 +5,7 @@ import { requireAuth } from '@/lib/auth-guard';
 import { PhotoCard, PhotoFile } from '@/types/database';
 import { validateImageFile, photoCardSchema } from '@/lib/validations';
 import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
+import { reportError } from '@/lib/logger';
 
 const MAX_PHOTOS_PER_CARD = 10;
 
@@ -38,10 +39,7 @@ async function _getPhotoCards(
 
   const { data, error } = await query;
 
-  if (error) {
-    console.error('Error fetching photo cards:', error);
-    return { cards: [], nextCursor: null, hasMore: false };
-  }
+  if (error) throw error;
 
   const cards = data || [];
   const hasMore = cards.length > PAGE_SIZE;
@@ -64,10 +62,7 @@ async function _getPhotoCardById(id: string): Promise<PhotoCard | null> {
     .eq('id', id)
     .single();
 
-  if (error) {
-    console.error('Error fetching photo card:', error);
-    return null;
-  }
+  if (error) throw error;
 
   return data;
 }
@@ -232,7 +227,7 @@ async function _uploadPhotos(cardId: string, formData: FormData): Promise<PhotoF
       });
 
     if (uploadError) {
-      console.error('Error uploading photo:', uploadError);
+      await reportError(uploadError, { action: 'uploadPhotos', extra: { file: originalName } });
       continue;
     }
 
@@ -292,8 +287,8 @@ async function _deletePhoto(cardId: string, photoUrl: string): Promise<void> {
       const filePath = urlParts[1];
       await supabase.storage.from('photo-cards').remove([filePath]);
     }
-  } catch (storageError) {
-    console.error('Error deleting from storage:', storageError);
+  } catch {
+    // Storage 삭제 실패는 무시 (DB 레코드는 이미 삭제됨)
   }
 }
 
@@ -345,17 +340,13 @@ async function _downloadPhoto(photo: PhotoFile): Promise<{ url: string; filename
       .from('photo-cards')
       .createSignedUrl(filePath, 60);
 
-    if (error || !data) {
-      console.error('Error creating signed URL:', error);
-      return null;
-    }
+    if (error || !data) return null;
 
     return {
       url: data.signedUrl,
       filename: photo.originalName,
     };
-  } catch (error) {
-    console.error('Error downloading photo:', error);
+  } catch {
     return null;
   }
 }
@@ -396,12 +387,8 @@ async function _getPhotoCardBySaleId(saleId: string): Promise<PhotoCard | null> 
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // No rows returned
-      return null;
-    }
-    console.error('Error fetching photo card by sale_id:', error);
-    return null;
+    if (error.code === 'PGRST116') return null;
+    throw error;
   }
 
   return data;

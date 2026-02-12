@@ -13,10 +13,7 @@ async function _getPhotoTags(): Promise<PhotoTag[]> {
     .select('*')
     .order('name');
 
-  if (error) {
-    console.error('Error fetching photo tags:', error);
-    return [];
-  }
+  if (error) throw error;
 
   return data || [];
 }

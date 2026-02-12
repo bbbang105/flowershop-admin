@@ -31,10 +31,7 @@ async function _getSaleCategories(): Promise<SaleCategory[]> {
     .select('*')
     .order('sort_order', { ascending: true });
 
-  if (error) {
-    console.error('Failed to fetch sale categories:', error);
-    return [];
-  }
+  if (error) throw error;
   return data || [];
 }
 
@@ -121,10 +118,7 @@ async function _getPaymentMethods(): Promise<PaymentMethod[]> {
     .select('*')
     .order('sort_order', { ascending: true });
 
-  if (error) {
-    console.error('Failed to fetch payment methods:', error);
-    return [];
-  }
+  if (error) throw error;
   return data || [];
 }
 
