@@ -620,7 +620,7 @@ export default function DepositsPage() {
                                 <TableCell className="pr-4">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="더보기">
+                                      <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="더보기">
                                         <MoreHorizontal className="h-3.5 w-3.5" />
                                       </Button>
                                     </DropdownMenuTrigger>
@@ -671,7 +671,7 @@ export default function DepositsPage() {
                               </span>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="더보기">
                                     <MoreHorizontal className="h-3.5 w-3.5" />
                                   </Button>
                                 </DropdownMenuTrigger>

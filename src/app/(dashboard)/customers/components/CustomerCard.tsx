@@ -64,7 +64,7 @@ export function CustomerCard({ customer, onSelect, onEdit, onDelete }: CustomerC
               <p className="text-xs text-muted-foreground mt-0.5">{customer.phone}</p>
             </div>
           </div>
-          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <div className="flex gap-0.5 shrink-0">
             <Button
               variant="ghost"
               size="icon"
