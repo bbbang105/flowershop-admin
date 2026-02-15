@@ -3,6 +3,7 @@
 import { PhotoCard as PhotoCardType } from '@/types/database';
 import { Card } from '@/components/ui/card';
 import { Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -31,10 +32,12 @@ export function PhotoCard({ card, tagColorMap, onClick }: PhotoCardProps) {
 
     if (photoCount === 1) {
       return (
-        <img
+        <Image
           src={photos[0].url}
           alt={card.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
       );
     }
@@ -43,7 +46,15 @@ export function PhotoCard({ card, tagColorMap, onClick }: PhotoCardProps) {
       return (
         <div className="w-full h-full grid grid-cols-2 gap-0.5">
           {photos.slice(0, 2).map((photo, i) => (
-            <img key={i} src={photo.url} alt="" className="w-full h-full object-cover" />
+            <div key={i} className="relative w-full h-full">
+              <Image
+                src={photo.url}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 25vw, (max-width: 1024px) 16vw, (max-width: 1280px) 12vw, 10vw"
+                className="object-cover"
+              />
+            </div>
           ))}
         </div>
       );
@@ -52,12 +63,34 @@ export function PhotoCard({ card, tagColorMap, onClick }: PhotoCardProps) {
     if (photoCount === 3) {
       return (
         <div className="w-full h-full flex gap-0.5">
-          <div className="w-1/2 h-full">
-            <img src={photos[0].url} alt="" className="w-full h-full object-cover" />
+          <div className="relative w-1/2 h-full">
+            <Image
+              src={photos[0].url}
+              alt=""
+              fill
+              sizes="(max-width: 640px) 25vw, (max-width: 1024px) 16vw, (max-width: 1280px) 12vw, 10vw"
+              className="object-cover"
+            />
           </div>
           <div className="w-1/2 h-full flex flex-col gap-0.5">
-            <img src={photos[1].url} alt="" className="w-full h-1/2 object-cover" />
-            <img src={photos[2].url} alt="" className="w-full h-1/2 object-cover" />
+            <div className="relative w-full h-1/2">
+              <Image
+                src={photos[1].url}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 25vw, (max-width: 1024px) 16vw, (max-width: 1280px) 12vw, 10vw"
+                className="object-cover"
+              />
+            </div>
+            <div className="relative w-full h-1/2">
+              <Image
+                src={photos[2].url}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 25vw, (max-width: 1024px) 16vw, (max-width: 1280px) 12vw, 10vw"
+                className="object-cover"
+              />
+            </div>
           </div>
         </div>
       );
@@ -68,7 +101,13 @@ export function PhotoCard({ card, tagColorMap, onClick }: PhotoCardProps) {
       <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-0.5">
         {photos.slice(0, 4).map((photo, i) => (
           <div key={i} className="relative overflow-hidden">
-            <img src={photo.url} alt="" className="w-full h-full object-cover" />
+            <Image
+              src={photo.url}
+              alt=""
+              fill
+              sizes="(max-width: 640px) 25vw, (max-width: 1024px) 16vw, (max-width: 1280px) 12vw, 10vw"
+              className="object-cover"
+            />
             {i === 3 && photoCount > 4 && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                 <span className="text-white font-medium text-sm">+{photoCount - 4}</span>

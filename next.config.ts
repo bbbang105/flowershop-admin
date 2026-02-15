@@ -5,6 +5,8 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
 }
 
 const supabaseHostname = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname;
+const r2PublicUrl = process.env.R2_PUBLIC_URL;
+const r2Hostname = r2PublicUrl ? new URL(r2PublicUrl).hostname : null;
 
 const nextConfig: NextConfig = {
   images: {
@@ -14,6 +16,11 @@ const nextConfig: NextConfig = {
         hostname: supabaseHostname,
         pathname: '/storage/v1/object/public/**',
       },
+      ...(r2Hostname ? [{
+        protocol: 'https' as const,
+        hostname: r2Hostname,
+        pathname: '/**',
+      }] : []),
     ],
   },
   experimental: {
@@ -40,9 +47,9 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               `script-src 'self' 'unsafe-inline' 'unsafe-eval'`,
               `style-src 'self' 'unsafe-inline'`,
-              `img-src 'self' data: blob: https://${supabaseHostname}`,
+              `img-src 'self' data: blob: https://${supabaseHostname}${r2Hostname ? ` https://${r2Hostname}` : ''}`,
               `font-src 'self'`,
-              `connect-src 'self' https://${supabaseHostname} wss://${supabaseHostname}`,
+              `connect-src 'self' https://${supabaseHostname} wss://${supabaseHostname}${r2Hostname ? ` https://${r2Hostname}` : ''}`,
               `frame-ancestors 'none'`,
               "base-uri 'self'",
               "form-action 'self'",

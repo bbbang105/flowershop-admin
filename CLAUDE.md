@@ -1,4 +1,4 @@
-# Hazel Admin - 꽃집 관리 시스템
+~~# Hazel Admin - 꽃집 관리 시스템
 
 꽃집(헤이즐) 매출/지출/고객/사진첩/예약을 관리하는 PWA 어드민 웹앱.
 
@@ -62,7 +62,8 @@ src/
 ├── components/error-boundary.tsx # React Error Boundary
 ├── lib/actions/         # Server Actions (15개, barrel: index.ts)
 ├── lib/constants.ts     # 공유 라벨 상수 (PAYMENT_LABELS, CHANNEL_LABELS, EXPENSE_LABELS)
-├── lib/supabase/        # client.ts, server.ts, middleware.ts, storage.ts
+├── lib/storage.ts       # Cloudflare R2 스토리지 추상화 (S3 호환)
+├── lib/supabase/        # client.ts, server.ts, middleware.ts
 ├── lib/errors.ts        # AppError, ErrorCode, withErrorLogging()
 ├── lib/logger.ts        # reportError() → Discord 웹훅
 ├── lib/validations.ts   # Zod 스키마
@@ -81,7 +82,7 @@ src/
 - 카드 수수료: `expected_deposit = amount * (1 - fee_rate/100)`
 - 입금 예정일: 영업일 기준 N일
 - 지출 총액: `unit_price * quantity`
-- 사진: 3MB 초과 시 자동 압축, 카드당 최대 10장
+- 사진: 3MB 초과 시 자동 압축, 카드당 최대 10장, Cloudflare R2 저장 (CDN 캐싱)
 - 예약 리마인더: `reminder_at` 시간 설정 → Cron으로 푸시 알림 발송
 - 푸시 실패: 영구 실패(404/410)만 구독 비활성화, 일시 에러는 유지
 
@@ -94,4 +95,4 @@ src/
 
 ## 기술 스택 상세
 
-→ `docs/ARCHITECTURE.md` 참조
+→ `docs/ARCHITECTURE.md` 참조~~

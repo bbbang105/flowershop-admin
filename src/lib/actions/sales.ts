@@ -8,8 +8,7 @@ import type { Sale } from '@/types/database';
 import { saleSchema, idsSchema, uuidSchema, validateImageFile } from '@/lib/validations';
 import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 import { getMonthDateRange } from '@/lib/utils';
-
-const BUCKET_NAME = 'sale-photos';
+import { uploadFile, deleteFileByUrl, generateFileKey, StoragePrefix } from '@/lib/storage';
 
 /**
  * 매출 폼 데이터에서 고객 ID를 결정한다.
@@ -226,23 +225,12 @@ async function _uploadSalePhotos(saleId: string, formData: FormData): Promise<st
     const imageError = validateImageFile(file);
     if (imageError) throw new AppError(ErrorCode.VALIDATION, imageError);
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${saleId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    // R2 Storage: 키 생성 및 업로드
+    const key = generateFileKey(StoragePrefix.PHOTO_CARDS, saleId, file.name);
+    const arrayBuffer = await file.arrayBuffer();
+    const publicUrl = await uploadFile(key, arrayBuffer, file.type || 'image/jpeg');
 
-    const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (error) throw error;
-
-    const { data: urlData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(data.path);
-
-    uploadedUrls.push(urlData.publicUrl);
+    uploadedUrls.push(publicUrl);
   }
 
   // Update sale with photo URLs
@@ -275,13 +263,8 @@ async function _deleteSalePhoto(saleId: string, photoUrl: string): Promise<void>
   await requireAuth();
   const supabase = await createClient();
 
-  // Extract path from URL
-  const url = new URL(photoUrl);
-  const pathParts = url.pathname.split(`/storage/v1/object/public/${BUCKET_NAME}/`);
-  if (pathParts.length >= 2) {
-    const filePath = pathParts[1];
-    await supabase.storage.from(BUCKET_NAME).remove([filePath]);
-  }
+  // R2 Storage: URL로 파일 삭제
+  await deleteFileByUrl(photoUrl);
 
   // Update sale to remove photo URL
   const { data: sale } = await supabase
