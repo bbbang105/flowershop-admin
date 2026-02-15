@@ -709,11 +709,11 @@ export function CalendarClient() {
                           </button>
                         )}
                       </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <Button variant="ghost" size="icon-sm" onClick={() => startEdit(r)} aria-label="수정">
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground" onClick={() => startEdit(r)} aria-label="수정">
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => setDeleteTarget(r)} aria-label="삭제">
+                        <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(r)} aria-label="삭제">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>

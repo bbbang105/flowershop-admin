@@ -45,12 +45,12 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon"
             className="lg:hidden shrink-0"
             onClick={onMenuClick}
             aria-label="메뉴 열기"
           >
-            <Menu className="h-4 w-4" />
+            <Menu className="h-5 w-5" />
           </Button>
           <h1 className="text-sm font-semibold text-foreground truncate">
             {pageTitle}
@@ -61,17 +61,17 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="flex items-center gap-1 shrink-0">
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon"
             className="text-muted-foreground hover:text-foreground"
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
             aria-label="테마 변경"
           >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-[transform,opacity] dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-[transform,opacity] dark:rotate-0 dark:scale-100" />
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-[transform,opacity] dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-[transform,opacity] dark:rotate-0 dark:scale-100" />
           </Button>
           <Link href="/settings">
-            <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground" aria-label="설정">
-              <Settings className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" aria-label="설정">
+              <Settings className="h-5 w-5" />
             </Button>
           </Link>
         </div>

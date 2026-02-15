@@ -131,7 +131,7 @@ export function SalesTable({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-brand"
+                          className="h-9 w-9 text-muted-foreground hover:text-brand"
                           onClick={(e) => {
                             e.stopPropagation();
                             onPhotoModal(sale);
@@ -143,7 +143,7 @@ export function SalesTable({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          className="h-9 w-9 text-muted-foreground hover:text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditSale(sale);
@@ -155,7 +155,7 @@ export function SalesTable({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          className="h-9 w-9 text-muted-foreground hover:text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
                             onDeleteSale(sale);

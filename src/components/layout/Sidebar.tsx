@@ -154,8 +154,8 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
                 <span className="text-base font-bold text-foreground truncate">Hazel</span>
               )}
             </Link>
-            <Button variant="ghost" size="icon-sm" className="lg:hidden shrink-0" onClick={onClose} aria-label="사이드바 닫기">
-              <X className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="lg:hidden shrink-0" onClick={onClose} aria-label="사이드바 닫기">
+              <X className="h-5 w-5" />
             </Button>
           </div>
 
