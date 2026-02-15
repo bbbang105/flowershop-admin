@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,7 @@ interface Props {
 
 export function CustomersClient({ initialCustomers, initialCategories }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -146,6 +147,19 @@ export function CustomersClient({ initialCustomers, initialCategories }: Props) 
     }
   };
 
+  // URL 파라미터로 고객 상세 자동 오픈 (매출 페이지에서 연결)
+  useEffect(() => {
+    const customerId = searchParams.get('customerId');
+    if (customerId) {
+      const customer = initialCustomers.find(c => c.id === customerId);
+      if (customer) {
+        handleSelectCustomer(customer);
+      }
+      router.replace('/customers', { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleFormSuccess = () => {
     router.refresh();
   };
@@ -209,42 +223,42 @@ export function CustomersClient({ initialCustomers, initialCategories }: Props) 
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-                <Users className="h-5 w-5 text-muted-foreground" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">전체 고객</p>
-                <p className="text-xl font-bold text-foreground tabular-nums">{stats.total}명</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">전체 고객</p>
+                <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{stats.total}<span className="text-sm font-medium">명</span></p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-                <span className="text-lg">🌟</span>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                <span className="text-base sm:text-lg">🌟</span>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">단골/VIP</p>
-                <p className="text-xl font-bold text-foreground tabular-nums">{stats.regularVip}명</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">단골/VIP</p>
+                <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{stats.regularVip}<span className="text-sm font-medium">명</span></p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-                <CalendarDays className="h-5 w-5 text-muted-foreground" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:text-left sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">최근 30일</p>
-                <p className="text-xl font-bold text-foreground tabular-nums">{stats.recentBuyers}명</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">최근 30일</p>
+                <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{stats.recentBuyers}<span className="text-sm font-medium">명</span></p>
               </div>
             </div>
           </CardContent>

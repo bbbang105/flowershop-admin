@@ -19,15 +19,56 @@ export interface PhotoCardsResponse {
 
 async function _getPhotoCards(
   tag?: string,
-  cursor?: string
+  cursor?: string,
+  customerId?: string
 ): Promise<PhotoCardsResponse> {
   const supabase = await createClient();
 
+  // 고객 필터가 있으면 sales 테이블 JOIN으로 photo_cards를 조회
+  if (customerId) {
+    // UUID 형식 검증
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(customerId)) {
+      throw new AppError(ErrorCode.VALIDATION, '잘못된 고객 ID 형식입니다');
+    }
+
+    // 단일 쿼리: sales inner join으로 고객별 photo_cards 필터링
+    let query = supabase
+      .from('photo_cards')
+      .select('*, sales!inner(customer_id)')
+      .eq('sales.customer_id', customerId)
+      .order('updated_at', { ascending: false })
+      .limit(PAGE_SIZE + 1);
+
+    if (tag) {
+      query = query.contains('tags', [tag]);
+    }
+
+    if (cursor) {
+      query = query.lt('updated_at', cursor);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // sales 조인 데이터 제거하고 순수 PhotoCard만 반환
+    const cards = (data || []).map(({ sales: _sales, ...card }) => card) as PhotoCard[];
+    const hasMore = cards.length > PAGE_SIZE;
+    const resultCards = hasMore ? cards.slice(0, PAGE_SIZE) : cards;
+    const nextCursor = hasMore && resultCards.length > 0
+      ? resultCards[resultCards.length - 1].updated_at
+      : null;
+
+    return { cards: resultCards, nextCursor, hasMore };
+  }
+
+  // 기본: 전체 조회
   let query = supabase
     .from('photo_cards')
     .select('*')
     .order('updated_at', { ascending: false })
-    .limit(PAGE_SIZE + 1); // Fetch one extra to check if there's more
+    .limit(PAGE_SIZE + 1);
 
   if (tag) {
     query = query.contains('tags', [tag]);

@@ -1,8 +1,9 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ImageIcon, Pencil, Trash2 } from 'lucide-react';
+import { ImageIcon, Pencil, Trash2, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
@@ -34,6 +35,8 @@ export function SaleDetailDialog({
   onDelete,
   onPhotoModal,
 }: SaleDetailDialogProps) {
+  const router = useRouter();
+
   return (
     <Dialog open={!!sale} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
@@ -82,7 +85,22 @@ export function SaleDetailDialog({
               {sale.customer_name && (
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">고객명</p>
-                  <p className="font-medium">{sale.customer_name}</p>
+                  {sale.customer_id ? (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 font-medium text-brand hover:text-brand/80 transition-colors"
+                      onClick={() => {
+                        onClose();
+                        router.push(`/customers?customerId=${sale.customer_id}`);
+                      }}
+                      aria-label={`${sale.customer_name} 고객 상세 보기`}
+                    >
+                      <span>{sale.customer_name}</span>
+                      <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                  ) : (
+                    <p className="font-medium">{sale.customer_name}</p>
+                  )}
                 </div>
               )}
             </div>

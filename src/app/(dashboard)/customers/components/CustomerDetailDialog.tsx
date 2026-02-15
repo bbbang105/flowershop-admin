@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Phone, ShoppingBag, ExternalLink, TrendingUp, Users, Pencil, Trash2 } from 'lucide-react';
+import { Phone, ShoppingBag, ExternalLink, TrendingUp, Users, Pencil, Trash2, Image as ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
@@ -164,14 +164,24 @@ export function CustomerDetailDialog({
               )}
             </div>
 
-            <div className="flex justify-between pt-4 border-t">
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-3 pt-4 border-t">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   onClick={() => onSaleRegister(customer)}
                 >
                   <ShoppingBag className="w-4 h-4 mr-2" />
                   매출 등록
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    onClose();
+                    router.push(`/gallery?customer=${customer.id}`);
+                  }}
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  사진 보기
                 </Button>
                 <Button variant="outline" onClick={() => onEdit(customer)}>
                   <Pencil className="w-4 h-4 mr-2" />
@@ -186,9 +196,11 @@ export function CustomerDetailDialog({
                   삭제
                 </Button>
               </div>
-              <Button variant="outline" onClick={onClose}>
-                닫기
-              </Button>
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={onClose}>
+                  닫기
+                </Button>
+              </div>
             </div>
           </div>
         )}
