@@ -6,6 +6,7 @@ import { PhotoCard, PhotoFile } from '@/types/database';
 import { validateImageFile, photoCardSchema } from '@/lib/validations';
 import { withErrorLogging, AppError, ErrorCode } from '@/lib/errors';
 import { reportError } from '@/lib/logger';
+import { uploadFile, deleteFileByUrl, deleteFilesByUrls, getSignedDownloadUrl, generateFileKey, StoragePrefix } from '@/lib/storage';
 
 const MAX_PHOTOS_PER_CARD = 10;
 
@@ -255,28 +256,18 @@ async function _uploadPhotos(cardId: string, formData: FormData): Promise<PhotoF
     if (imageError) throw new AppError(ErrorCode.VALIDATION, imageError);
 
     const originalName = originalNames[i] || file.name;
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${cardId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-    const arrayBuffer = await file.arrayBuffer();
+    try {
+      // R2 Storage: 키 생성 및 업로드
+      const key = generateFileKey(StoragePrefix.PHOTO_CARDS, cardId, file.name);
+      const arrayBuffer = await file.arrayBuffer();
+      const publicUrl = await uploadFile(key, arrayBuffer, file.type || 'image/jpeg');
 
-    const { error: uploadError } = await supabase.storage
-      .from('photo-cards')
-      .upload(fileName, arrayBuffer, {
-        contentType: file.type || 'image/jpeg',
-        upsert: false,
-      });
-
-    if (uploadError) {
+      uploadedPhotos.push({ url: publicUrl, originalName });
+    } catch (uploadError) {
       await reportError(uploadError, { action: 'uploadPhotos', extra: { file: originalName } });
       continue;
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('photo-cards')
-      .getPublicUrl(fileName);
-
-    uploadedPhotos.push({ url: publicUrl, originalName });
   }
 
   // Update card with new photos
@@ -321,13 +312,9 @@ async function _deletePhoto(cardId: string, photoUrl: string): Promise<void> {
 
   if (updateError) throw updateError;
 
-  // Delete from storage
+  // R2 Storage: URL로 파일 삭제
   try {
-    const urlParts = photoUrl.split('/photo-cards/');
-    if (urlParts.length > 1) {
-      const filePath = urlParts[1];
-      await supabase.storage.from('photo-cards').remove([filePath]);
-    }
+    await deleteFileByUrl(photoUrl);
   } catch {
     // Storage 삭제 실패는 무시 (DB 레코드는 이미 삭제됨)
   }
@@ -337,17 +324,11 @@ export const deletePhoto = withErrorLogging('deletePhoto', _deletePhoto);
 
 async function _deletePhotosFromStorage(photos: PhotoFile[]): Promise<void> {
   await requireAuth();
-  const supabase = await createClient();
 
-  const filePaths = photos
-    .map(photo => {
-      const parts = photo.url.split('/photo-cards/');
-      return parts.length > 1 ? parts[1] : null;
-    })
-    .filter((path): path is string => path !== null);
-
-  if (filePaths.length > 0) {
-    await supabase.storage.from('photo-cards').remove(filePaths);
+  // R2 Storage: URL 배열로 여러 파일 삭제
+  const urls = photos.map(photo => photo.url);
+  if (urls.length > 0) {
+    await deleteFilesByUrls(urls);
   }
 }
 
@@ -369,22 +350,13 @@ export const reorderPhotos = withErrorLogging('reorderPhotos', _reorderPhotos);
 
 
 async function _downloadPhoto(photo: PhotoFile): Promise<{ url: string; filename: string } | null> {
-  const supabase = await createClient();
-
   try {
-    const urlParts = photo.url.split('/photo-cards/');
-    if (urlParts.length <= 1) return null;
-
-    const filePath = urlParts[1];
-
-    const { data, error } = await supabase.storage
-      .from('photo-cards')
-      .createSignedUrl(filePath, 60);
-
-    if (error || !data) return null;
+    // R2 Storage: 서명된 다운로드 URL 생성
+    const signedUrl = await getSignedDownloadUrl(photo.url, 60);
+    if (!signedUrl) return null;
 
     return {
-      url: data.signedUrl,
+      url: signedUrl,
       filename: photo.originalName,
     };
   } catch {

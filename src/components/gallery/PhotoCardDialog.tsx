@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Edit, Trash2, Loader2, Download, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -117,11 +118,14 @@ export function PhotoCardDialog({ card, onClose, onEdit, onDelete }: PhotoCardDi
         <div className="space-y-4">
           {card.photos.length > 0 && (
             <div className="relative">
-              <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                <img
+              <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
+                <Image
                   src={card.photos[currentIndex].url}
                   alt={`${card.title} - ${currentIndex + 1}`}
-                  className="w-full h-full object-contain"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 768px"
+                  className="object-contain"
+                  priority={currentIndex === 0}
                 />
               </div>
 
@@ -153,11 +157,17 @@ export function PhotoCardDialog({ card, onClose, onEdit, onDelete }: PhotoCardDi
                 <button
                   key={photo.url}
                   onClick={() => setCurrentIndex(index)}
-                  className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
+                  className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
                     index === currentIndex ? 'border-brand' : 'border-transparent'
                   }`}
                 >
-                  <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                  <Image
+                    src={photo.url}
+                    alt=""
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
                 </button>
               ))}
             </div>

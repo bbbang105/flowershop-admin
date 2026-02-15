@@ -54,13 +54,24 @@ export async function reportError(
 ): Promise<void> {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
+  // 안전하게 에러 메시지 추출 (RSC 직렬화 불가 객체 대응)
+  const safeMessage = (() => {
+    try {
+      if (error instanceof Error) return error.message;
+      if (typeof error === 'string') return error;
+      return JSON.stringify(error);
+    } catch {
+      return '(직렬화 불가 에러)';
+    }
+  })();
+
   // 개발 환경이거나 웹훅 미설정 시 콘솔만
   if (process.env.NODE_ENV === 'development' || !webhookUrl) {
-    console.error('[Error]', context.action || '', error);
+    console.error('[Error]', context.action || '', safeMessage);
     return;
   }
 
-  const err = error instanceof Error ? error : new Error(String(error));
+  const err = error instanceof Error ? error : new Error(safeMessage);
   const dedupKey = `${err.message}:${context.action || ''}`;
 
   if (isDuplicate(dedupKey)) return;

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ImageIcon, Pencil, Trash2, ExternalLink } from 'lucide-react';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
@@ -125,10 +126,12 @@ export function SaleDetailDialog({
                 <div className="grid grid-cols-3 gap-2">
                   {photos.photos.slice(0, 6).map((photo, index) => (
                     <div key={photo.url} className="relative aspect-square">
-                      <img
+                      <Image
                         src={photo.url}
                         alt={`사진 ${index + 1}`}
-                        className="w-full h-full object-cover rounded-lg"
+                        fill
+                        sizes="(max-width: 768px) 33vw, 128px"
+                        className="object-cover rounded-lg"
                       />
                       {index === 5 && photos.photos.length > 6 && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
